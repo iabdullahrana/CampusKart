@@ -1,0 +1,297 @@
+@page "/browse"
+@layout Layout.UserLayout
+
+<PageTitle>CampusKart | Browse Marketplace</PageTitle>
+
+<main class="container py-4">
+    <!-- Search Section -->
+    <section class="mb-4">
+        <div class="row g-2">
+            <div class="col flex-grow-1 position-relative">
+                <span class="material-symbols-outlined position-absolute fs-4 text-secondary" style="left: 16px; top: 50%; transform: translateY(-50%);">search</span>
+                <input class="form-control py-3 pl-5 shadow-sm border border-light" 
+                       style="padding-left: 48px; border-radius: 12px; font-size: 16px;" 
+                       placeholder="Search items, locations, or sellers..." 
+                       type="text" 
+                       @bind="searchQuery" 
+                       @bind:event="oninput" 
+                       @onkeyup="HandleKeyUp" />
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-ck-primary py-3 px-4 shadow-sm" style="border-radius: 12px;" @onclick="ExecuteSearch">
+                    Search
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Filters Section -->
+    <section class="bg-ck-accent-section p-4 rounded-4 mb-4 shadow-sm">
+        <div class="row g-3 align-items-end">
+            <!-- Category Filter -->
+            <div class="col-md-3">
+                <label class="form-label fw-bold text-ck-primary-container small mb-2">Category</label>
+                <select class="form-select py-2 border border-light" style="border-radius: 8px;" @bind="selectedCategory">
+                    <option value="All">All Categories</option>
+                    <option value="Books">Books</option>
+                    <option value="Electronics">Electronics</option>
+                    <option value="Furniture">Furniture</option>
+                    <option value="Stationery">Stationery</option>
+                </select>
+            </div>
+
+            <!-- Price Threshold Slider -->
+            <div class="col-md-5">
+                <div class="d-flex justify-content-between mb-2">
+                    <label class="form-label fw-bold text-ck-primary-container small mb-0">Max Price</label>
+                    <span class="fw-bold text-ck-primary small">PKR @maxPrice.ToString("N0")</span>
+                </div>
+                <input class="form-range" type="range" min="0" max="200000" step="500" @bind="maxPrice" @bind:event="oninput" />
+            </div>
+
+            <!-- Sort By Picker -->
+            <div class="col-md-4">
+                <label class="form-label fw-bold text-ck-primary-container small mb-2">Sort by</label>
+                <select class="form-select py-2 border border-light" style="border-radius: 8px;" @bind="sortBy">
+                    <option value="Newest">Newest Listed</option>
+                    <option value="LowToHigh">Price: Low to High</option>
+                    <option value="HighToLow">Price: High to Low</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Active Filter Badge -->
+        @if (selectedCategory != "All" || !string.IsNullOrEmpty(activeSearchText) || maxPrice < 200000)
+        {
+            <div class="d-flex flex-wrap gap-2 mt-3 pt-3 border-top border-light align-items-center">
+                <span class="small fw-semibold text-ck-secondary">Active Filters:</span>
+                
+                @if (selectedCategory != "All")
+                {
+                    <span class="badge bg-white text-ck-primary border border-light rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 shadow-xs font-label-md">
+                        Category: @selectedCategory
+                        <span class="material-symbols-outlined fs-6 text-secondary cursor-pointer hover-primary" @onclick="ClearCategoryFilter">close</span>
+                    </span>
+                }
+                
+                @if (!string.IsNullOrEmpty(activeSearchText))
+                {
+                    <span class="badge bg-white text-ck-primary border border-light rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 shadow-xs font-label-md">
+                        Search: "@activeSearchText"
+                        <span class="material-symbols-outlined fs-6 text-secondary cursor-pointer hover-primary" @onclick="ClearSearchFilter">close</span>
+                    </span>
+                }
+
+                @if (maxPrice < 200000)
+                {
+                    <span class="badge bg-white text-ck-primary border border-light rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2 shadow-xs font-label-md">
+                        Price &lt;= PKR @maxPrice.ToString("N0")
+                        <span class="material-symbols-outlined fs-6 text-secondary cursor-pointer hover-primary" @onclick="ClearPriceFilter">close</span>
+                    </span>
+                }
+
+                <button class="btn btn-link text-ck-primary-container p-0 small fw-bold text-decoration-none ms-auto" @onclick="ResetAllFilters">
+                    Clear All
+                </button>
+            </div>
+        }
+    </section>
+
+    <!-- Grid of Listings -->
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4 mb-5">
+        @if (FilteredItems.Any())
+        {
+            @foreach (var item in FilteredItems)
+            {
+                <div class="col">
+                    <div class="ck-card h-100">
+                        <div class="ck-card-img-wrapper">
+                            <img class="ck-card-img" src="@item.ImageUrl" alt="@item.Title" />
+                            <span class="ck-badge">@item.Category</span>
+                        </div>
+                        <div class="ck-card-body d-flex flex-column h-100">
+                            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                <h3 class="ck-card-title mb-0 text-truncate" title="@item.Title">@item.Title</h3>
+                                <span class="bg-ck-accent-section text-ck-primary-container px-2 py-0.5 rounded text-uppercase" style="font-size: 11px; font-weight: 700;">
+                                    @item.Condition
+                                </span>
+                            </div>
+                            <p class="ck-card-price mb-3">@item.PriceFormatted</p>
+                            
+                            <div class="pt-2 mt-auto border-top border-light d-flex justify-content-between align-items-center">
+                                <span class="text-ck-secondary small fw-semibold">@item.SellerName</span>
+                                <div class="ck-card-meta small">
+                                    <span class="material-symbols-outlined fs-6" style="vertical-align: middle;">location_on</span>
+                                    <span>@item.Location</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-12 text-center py-5">
+                <span class="material-symbols-outlined text-ck-primary-container" style="font-size: 80px; opacity: 0.15;">search_off</span>
+                <h3 class="fw-bold mt-3 text-ck-primary">No Listings Found</h3>
+                <p class="text-ck-secondary">We couldn't find anything matching your active filters. Try loosening your criteria!</p>
+                <button class="btn btn-ck-primary mt-2" @onclick="ResetAllFilters">Reset All Filters</button>
+            </div>
+        }
+    </div>
+</main>
+
+@code {
+    private string searchQuery = "";
+    private string activeSearchText = "";
+    private string selectedCategory = "All";
+    private int maxPrice = 200000;
+    private string sortBy = "Newest";
+
+    private void ExecuteSearch()
+    {
+        activeSearchText = searchQuery;
+    }
+
+    private void HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            ExecuteSearch();
+        }
+    }
+
+    private void ClearCategoryFilter() => selectedCategory = "All";
+    private void ClearSearchFilter() => searchQuery = activeSearchText = "";
+    private void ClearPriceFilter() => maxPrice = 200000;
+
+    private void ResetAllFilters()
+    {
+        selectedCategory = "All";
+        searchQuery = activeSearchText = "";
+        maxPrice = 200000;
+        sortBy = "Newest";
+    }
+
+    // Dynamic Filtered Items list
+    private IEnumerable<MarketplaceItem> FilteredItems
+    {
+        get
+        {
+            var items = mockItems.AsEnumerable();
+
+            // Search Filter (checks title, seller, and location)
+            if (!string.IsNullOrWhiteSpace(activeSearchText))
+            {
+                items = items.Where(i => i.Title.Contains(activeSearchText, StringComparison.OrdinalIgnoreCase) ||
+                                         i.SellerName.Contains(activeSearchText, StringComparison.OrdinalIgnoreCase) ||
+                                         i.Location.Contains(activeSearchText, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Category Filter
+            if (selectedCategory != "All")
+            {
+                items = items.Where(i => i.Category.Equals(selectedCategory, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Price Cap Filter
+            items = items.Where(i => i.Price <= maxPrice);
+
+            // Sorting Picker
+            items = sortBy switch
+            {
+                "LowToHigh" => items.OrderBy(i => i.Price),
+                "HighToLow" => items.OrderByDescending(i => i.Price),
+                _ => items.OrderByDescending(i => i.DatePosted) // Newest
+            };
+
+            return items;
+        }
+    }
+
+    // Mock Item Record representation
+    public class MarketplaceItem
+    {
+        public string Title { get; set; } = "";
+        public string Category { get; set; } = "";
+        public string Condition { get; set; } = "";
+        public int Price { get; set; }
+        public string PriceFormatted => $"PKR {Price:N0}";
+        public string ImageUrl { get; set; } = "";
+        public string SellerName { get; set; } = "";
+        public string Location { get; set; } = "";
+        public DateTime DatePosted { get; set; }
+    }
+
+    // Mock seeded listings matching the design spec
+    private readonly List<MarketplaceItem> mockItems = new()
+    {
+        new MarketplaceItem
+        {
+            Title = "Introduction to Algorithms",
+            Category = "Books",
+            Condition = "New",
+            Price = 4500,
+            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuCUciMTQGyq8jDrWn9Nysoro7QgRthNhqQMi2X743xstAu_iDRMHm_mbPgY_UfvZnQkA_90rw5eu_BDC8AXWjtiEx1h8yW2JlhHpFvaAs0LHULGcD4OdwLSNRlnmDp91DHWdQsAIfs5kJ-5ZyFZxq5Axez4zZMcf-vc6QQZ12KAJ_lFALHuSpo4qIuost7DLvzY7TKI1fS08n9F6d-DTDPXw07GlpM-WQLcU2bn32MhdqZPx5AHQzlhoMf_KLy12RIo4AjoK-fyr7w",
+            SellerName = "Ahmad Raza",
+            Location = "LUMS, Lahore",
+            DatePosted = DateTime.Now.AddHours(-2)
+        },
+        new MarketplaceItem
+        {
+            Title = "MacBook Air M1 2020",
+            Category = "Electronics",
+            Condition = "Used",
+            Price = 165000,
+            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuA4HnfPbgzFQazyz9VziH8I1SrCXR83ZTp4BGSd_wzaBaamvBVGfDtxpifPHUYusvWr8r0TwocqnFvK_ozT9p1l0hACxxFrniZqvDxeN01zCiEslaleQYILnNVmWsr6Yt-LSrig0KXqXapjzHPdoDv1sY0fjS0D2etBUUaq33c-ycof1WfBH_XYjvA7pyJLxRYnZh6zuZXH_QzQpfYv-Fd5XGD2c00BTfwXKVfJNPypyvBjHKHHjH_UFojBrz_dDoRpShIjDVYRIGE",
+            SellerName = "Sarah Khan",
+            Location = "NUST, Islamabad",
+            DatePosted = DateTime.Now.AddHours(-4)
+        },
+        new MarketplaceItem
+        {
+            Title = "Ergonomic Study Chair",
+            Category = "Furniture",
+            Condition = "Used",
+            Price = 12000,
+            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuCJrsgXkdIqZEAMJaClb-D2Do_ere_dUUJDuHMxZF6lzIRI58lhqk6eLi-r5C3lKmO0RdFVKgy0mAo6B_p0SyFQMzHWsq6FHuEpqLVzhbBTSbSI5zOt5WEZBziIIfpll9zrEkapPhN42Y0-idF8nFEybHeG31S55_39ZQajZfCGeuaSeATgalWOav_MmNopP83uLdMbWuW2frAXEe-TonA-jzq0-8nj68Sbc8E4EkPi_iKWFTnsnFUHy9bvMtWDn6J8T7Ts1Rs3EIw",
+            SellerName = "Zain Malik",
+            Location = "IBA, Karachi",
+            DatePosted = DateTime.Now.AddHours(-6)
+        },
+        new MarketplaceItem
+        {
+            Title = "Premium Art Supplies Kit",
+            Category = "Stationery",
+            Condition = "New",
+            Price = 3200,
+            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuCGFF11w7sq2ULliEH27irS_THHMvXFqylD_-nrGYvcx_B_1-nA4AnbGCIV8F7T4awUpqMRM6sxoKL8SOX-igzomoiN5n3_HkgcOF9_cTzKXCLkJD3tD26-wTjxsYf6-jyoXNCmjXAR6T1xsgPkqi8JAnnFPC6DOwBye9WAjr5l4e5qWykVHlNny_zT5yJhmx2cF04E03qoED6sqDugmJ6dwdmX9MG2huerflBe-XssdLTeTr6GrLRWfqTp3H4uTusXR_5Gwc47Ovw",
+            SellerName = "Fatima Ali",
+            Location = "NCA, Lahore",
+            DatePosted = DateTime.Now.AddHours(-12)
+        },
+        new MarketplaceItem
+        {
+            Title = "Sony WH-1000XM4",
+            Category = "Electronics",
+            Condition = "Used",
+            Price = 45000,
+            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuBx9I1ipUcY9lJBswC9kUmkYxx4OOjA-kCvYhtfSlnVEhqwGwZfLxiwu6Z6uI4eoxMXlsXQP4v4V86Tfg2OVBoEu4usKmbDGDYWcP44ky2sJzKhes2lddgAiReCTf4aftrXInVSbNUy23MbZbIJvDWRs8pXFZe-dZvNnR3qRcSouugjLkWjGN9hsMvNg3RbLzRSbewG9vdMVaDCkvO7ZOWl5zBnyfQ1p6FNy_8_WsrmGMUNsDMZdfRReRQ0X4N2uaq_GKGEbAahkoY",
+            SellerName = "Bilal Sheikh",
+            Location = "GIKI, Swabi",
+            DatePosted = DateTime.Now.AddDays(-1)
+        },
+        new MarketplaceItem
+        {
+            Title = "Casio Graphic Calculator",
+            Category = "Electronics",
+            Condition = "New",
+            Price = 8500,
+            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuBrqG_0rl-4gMSq_vBJ8U6uV1WXZQGFKIRFFm16Oo2AVS1THiC76e-HQ2B-RKfrcC2kvyvO5F0_gDE-rJVrbNoMCZ8oXiWWvT0zw5ZIKPe7-TMhlcYPaCA54v0STtYhbQ5jLMmTz1TQjWaOIlKGsqe5FiuOvq6tsf4UFnpFgJ6Ul41MaLiAgJRTC3SVKmcjGx-1Ov29caqi3NavAp8ybWaKZ_ucEIo8jHsKVltwWOGJ5pxtCUXNG06FHPm3T95W1J90x6AmY5zyDvo",
+            SellerName = "Usman Tariq",
+            Location = "FAST, Lahore",
+            DatePosted = DateTime.Now.AddDays(-2)
+        }
+    };
+}

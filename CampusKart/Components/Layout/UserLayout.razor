@@ -8,7 +8,7 @@
                 
                 <!-- Desktop Links -->
                 <div class="d-none d-md-flex align-items-center gap-4">
-                    <a class="nav-link text-ck-primary-container fw-bold border-bottom border-2 border-primary pb-1" href="/">Browse</a>
+                    <a class="nav-link text-ck-primary-container fw-bold border-bottom border-2 border-primary pb-1" href="browse">Browse</a>
                     <a class="nav-link text-ck-secondary fw-semibold hover-primary" href="#">Sell</a>
                     <a class="nav-link text-ck-secondary fw-semibold hover-primary" href="login">Login</a>
                     <a class="btn-ck-primary" style="text-decoration:none;" href="#">Register</a>
@@ -24,7 +24,7 @@
             @if (isMobileMenuOpen)
             {
                 <div class="d-md-none mt-3 pb-2 d-flex flex-column gap-2 animate-fade-in">
-                    <a class="nav-link text-ck-primary-container fw-bold py-2 border-bottom" href="/" @onclick="ToggleMobileMenu">Browse</a>
+                    <a class="nav-link text-ck-primary-container fw-bold py-2 border-bottom" href="browse" @onclick="ToggleMobileMenu">Browse</a>
                     <a class="nav-link text-ck-secondary fw-semibold py-2 border-bottom" href="#" @onclick="ToggleMobileMenu">Sell</a>
                     <a class="nav-link text-ck-secondary fw-semibold py-2 border-bottom" href="login" @onclick="ToggleMobileMenu">Login</a>
                     <a class="btn btn-ck-primary text-center mt-2" href="#" @onclick="ToggleMobileMenu">Register</a>
