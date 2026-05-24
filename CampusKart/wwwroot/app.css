@@ -1,5 +1,172 @@
+:root {
+    --ck-primary: #003f87;
+    --ck-primary-hover: #002c60;
+    --ck-primary-container: #0056b3;
+    --ck-primary-container-hover: #004491;
+    --ck-background: #fbf9f8;
+    --ck-secondary: #5d5f5f;
+    --ck-on-surface: #1b1c1c;
+    --ck-accent-light: #e7f1ff;
+    --ck-border-color: #c2c6d4;
+    --ck-border-light: #e4e6ec;
+}
+
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: var(--ck-background) !important;
+    color: var(--ck-on-surface);
+}
+
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* Custom premium buttons */
+.btn-ck-primary {
+    background-color: var(--ck-primary-container) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    border: none;
+    transition: all 0.2s ease-in-out;
+}
+.btn-ck-primary:hover {
+    background-color: var(--ck-primary-container-hover) !important;
+    transform: translateY(-1px);
+}
+.btn-ck-primary:active {
+    transform: translateY(0);
+}
+
+.btn-ck-outline {
+    background-color: transparent !important;
+    color: var(--ck-primary-container) !important;
+    border: 2px solid var(--ck-primary-container) !important;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    transition: all 0.2s ease-in-out;
+}
+.btn-ck-outline:hover {
+    background-color: var(--ck-accent-light) !important;
+    color: var(--ck-primary-container-hover) !important;
+    transform: translateY(-1px);
+}
+.btn-ck-outline:active {
+    transform: translateY(0);
+}
+
+/* Category cards in Bento Grid */
+.ck-cat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 2rem 1.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--ck-border-light);
+    background-color: #ffffff;
+    text-decoration: none;
+    color: var(--ck-on-surface);
+    transition: all 0.2s ease-in-out;
+}
+.ck-cat-card:hover {
+    border-color: var(--ck-primary-container);
+    transform: translateY(-4px);
+    color: var(--ck-primary-container);
+}
+.ck-cat-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background-color: var(--ck-accent-light);
+    color: var(--ck-primary-container);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    transition: all 0.2s ease-in-out;
+}
+.ck-cat-card:hover .ck-cat-icon {
+    background-color: var(--ck-primary-container);
+    color: #ffffff;
+}
+
+/* Flat Product Card */
+.ck-card {
+    border: 1px solid var(--ck-border-light);
+    border-radius: 12px;
+    background-color: #ffffff;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ck-card:hover {
+    border-color: var(--ck-primary-container);
+    transform: translateY(-6px);
+}
+.ck-card-img-wrapper {
+    aspect-ratio: 4/3;
+    overflow: hidden;
+    position: relative;
+    background-color: #f6f8fa;
+}
+.ck-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+.ck-card:hover .ck-card-img {
+    transform: scale(1.05);
+}
+.ck-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background-color: var(--ck-accent-light);
+    color: var(--ck-primary-container);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+.ck-card-body {
+    padding: 1.25rem;
+}
+.ck-card-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--ck-on-surface);
+}
+.ck-card-price {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ck-primary-container);
+}
+.ck-card-meta {
+    font-size: 13px;
+    color: var(--ck-secondary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Colors and background overrides */
+.bg-ck-accent-section {
+    background-color: #f0f4f9 !important;
+}
+.text-ck-secondary {
+    color: var(--ck-secondary) !important;
+}
+.text-ck-primary {
+    color: var(--ck-primary) !important;
+}
+.text-ck-primary-container {
+    color: var(--ck-primary-container) !important;
 }
 
 a, .btn-link {
@@ -48,4 +215,22 @@ h1:focus {
 
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
+}
+
+/* Custom interactive animations and layout fixes */
+.hover-primary {
+    transition: color 0.2s ease-in-out;
+}
+.hover-primary:hover {
+    color: var(--ck-primary-container) !important;
+}
+.hover-underline:hover {
+    text-decoration: underline !important;
+}
+.animate-fade-in {
+    animation: fadeIn 0.2s ease-out forwards;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
 }

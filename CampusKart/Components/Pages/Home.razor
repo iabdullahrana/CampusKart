@@ -1,7 +1,157 @@
-﻿@page "/"
+@page "/"
+@layout Layout.UserLayout
 
-<PageTitle>Home</PageTitle>
+<PageTitle>CampusKart | Peer-to-Peer Student Marketplace</PageTitle>
 
-<h1>Hello, world!</h1>
+<!-- Hero Section -->
+<section class="container py-5 my-4">
+    <div class="row align-items-center g-5">
+        <!-- Hero Text -->
+        <div class="col-lg-6 d-flex flex-column gap-3">
+            <h1 class="display-4 fw-black text-ck-primary tracking-tight lh-sm m-0" style="font-weight: 800;">
+                Buy & Sell on Campus
+            </h1>
+            <p class="lead text-ck-secondary m-0">
+                Your university's own marketplace. Designed for the unique needs of students, from textbooks to dorm essentials.
+            </p>
+            <div class="d-flex flex-wrap gap-3 pt-3">
+                <a href="#" class="btn-ck-primary text-decoration-none text-center">Start Browsing</a>
+                <a href="#" class="btn-ck-outline text-decoration-none text-center">Post an Item</a>
+            </div>
+        </div>
+        <!-- Hero Graphic/Image Card -->
+        <div class="col-lg-6">
+            <div class="position-relative overflow-hidden rounded-4 shadow-sm border border-light">
+                <img alt="Students on campus courtyard" class="img-fluid w-100 h-100 object-fit-cover rounded-4" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKgcf1ZhChEvSgRwi7k_Li46BWzLp8bHNBvj4KH7Wk-ryU24ykSylNXDWVmTwiAhN7aRNgxaiTrHsFaQmOOyO8HPvEh-OINq7qPNfDUPJcJN4RfDD8ZD8Yk5KkSc5174PC7tynOLmvXLwfwNQjztVI6zUjY_0zOusDYvzAjld_leMhFZ0fD7ylJ1tBMw4x2vS337BrNfEhQiCILLaUn3hJrYsAoQYlScnlV9kNqEJQlbdlU1icdUhjZ-yMi5dgHRv6u84hNR7tgQg" />
+            </div>
+        </div>
+    </div>
+</section>
 
-Welcome to your new app.
+<!-- Categories Section (Bento Grid Style) -->
+<section class="bg-ck-accent-section py-5">
+    <div class="container py-4">
+        <div class="mb-4">
+            <h2 class="h2 fw-bold text-ck-primary mb-1">Popular Categories</h2>
+            <p class="text-ck-secondary mb-0">Find exactly what you need for this semester.</p>
+        </div>
+        
+        <div class="row row-cols-2 row-cols-md-4 g-4">
+            <!-- Books Category -->
+            <div class="col">
+                <a class="ck-cat-card" href="#">
+                    <div class="ck-cat-icon">
+                        <span class="material-symbols-outlined fs-2">menu_book</span>
+                    </div>
+                    <span class="fw-semibold">Books</span>
+                </a>
+            </div>
+            
+            <!-- Electronics Category -->
+            <div class="col">
+                <a class="ck-cat-card" href="#">
+                    <div class="ck-cat-icon">
+                        <span class="material-symbols-outlined fs-2">devices</span>
+                    </div>
+                    <span class="fw-semibold">Electronics</span>
+                </a>
+            </div>
+            
+            <!-- Furniture Category -->
+            <div class="col">
+                <a class="ck-cat-card" href="#">
+                    <div class="ck-cat-icon">
+                        <span class="material-symbols-outlined fs-2">chair</span>
+                    </div>
+                    <span class="fw-semibold">Furniture</span>
+                </a>
+            </div>
+            
+            <!-- Stationery Category -->
+            <div class="col">
+                <a class="ck-cat-card" href="#">
+                    <div class="ck-cat-icon">
+                        <span class="material-symbols-outlined fs-2">edit_note</span>
+                    </div>
+                    <span class="fw-semibold">Stationery</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Newly Listed Section -->
+<section class="container py-5 my-4">
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <h2 class="h2 fw-bold text-ck-primary mb-1">Newly Listed</h2>
+            <p class="text-ck-secondary mb-0">Items just posted by students near you.</p>
+        </div>
+        <a href="#" class="text-ck-primary-container fw-semibold text-decoration-none hover-underline d-flex align-items-center gap-1">
+            View all listings 
+            <span class="material-symbols-outlined fs-6" style="vertical-align: middle;">arrow_forward</span>
+        </a>
+    </div>
+
+    <div class="row g-4 justify-content-center">
+        <!-- Listing Card 1: Books -->
+        <div class="col-md-6 col-lg-4">
+            <div class="ck-card h-100">
+                <div class="ck-card-img-wrapper">
+                    <img alt="Stack of university textbooks" class="ck-card-img" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCoKJ90v5328lZg4H2q0wWyx18YzhfGCZ72Jyrv_ZMMG7BFQcXGaDmQaDoz6CGKD4MDGmC6G1FOl9mq2NpjlO4whnyvo5uFkAZ7LRkJZCZ2YqH5DVVd_S4bh2f_u9-9Qo5asGtuHwZis-bZlNePjqvMZxu4NkQ4sdxt8-lMiGElDCksiBs_oD4HHb02EEETCjkIYzG5PaR7OWyd3mepiUVFv_6Tz0CbYEJDY26JAGul85Dc3ZGEIQDLM_MC7LP0SMgzBDOhmY13VZE" />
+                    <span class="ck-badge">Books</span>
+                </div>
+                <div class="ck-card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                        <h3 class="ck-card-title mb-0">Intro to Psychology (12th Ed)</h3>
+                        <span class="ck-card-price">$45</span>
+                    </div>
+                    <div class="ck-card-meta">
+                        <span class="material-symbols-outlined fs-6">location_on</span>
+                        <span>Main Library, 2h ago</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Listing Card 2: Furniture -->
+        <div class="col-md-6 col-lg-4">
+            <div class="ck-card h-100">
+                <div class="ck-card-img-wrapper">
+                    <img alt="Minimalist LED desk lamp" class="ck-card-img" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCthyl4pcd2l5hNA_2r6l-B_FRb9bkQcSsCyavVZg_j3sn6qAN8wjhWFa1gbBkEo3ay9JiIjDjxajeHluGxWIFqMZg8Bq2zOl-4Y3pZWnHGk0z3Lg7wAmdUWW6d2Mge5yXEJM8Reub8AiXaoObaOKUjSQRgZu64UH5Jdlj7q7MtqxHVuuliTeuPkFqFgHFDwnl5IUzjsVtyYYaaB7d0sgDWPlg-zW5kLOSTZ46anqpLFhvt4yUoxLgDCRz-X7kGS5TG38MfHsAQROA" />
+                    <span class="ck-badge">Furniture</span>
+                </div>
+                <div class="ck-card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                        <h3 class="ck-card-title mb-0">Minimalist LED Desk Lamp</h3>
+                        <span class="ck-card-price">$15</span>
+                    </div>
+                    <div class="ck-card-meta">
+                        <span class="material-symbols-outlined fs-6">location_on</span>
+                        <span>North Dorms, 5h ago</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Listing Card 3: Electronics -->
+        <div class="col-md-6 col-lg-4">
+            <div class="ck-card h-100">
+                <div class="ck-card-img-wrapper">
+                    <img alt="Modern noise-canceling headphones" class="ck-card-img" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAnReDOkLaWz6-AZJ1bw4bN6rEvJaxN-Nmxa1UslibIRdX0Cw9_kHbgUcOaxXU1u3pKjMsit9Ez1c_QQui3dvXrjvNILG2rITEqJJlRt0ytELlgrHfwsuH3CJkjHzdbtwGfZAcp8XpcEbXpgSoimMZG_xr7wQOZwg3_T7e0nQXazENehtRB5VZpLNKxjfxBHAjhykw_Ov6cjtNJv_w0QIHVUC_QsYZ4KuuE9nIVD0V2hQrBrpXuLXv8Riv7umFy2u96Dv9tx52eq3s" />
+                    <span class="ck-badge">Electronics</span>
+                </div>
+                <div class="ck-card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                        <h3 class="ck-card-title mb-0">Noise Canceling Headphones</h3>
+                        <span class="ck-card-price">$120</span>
+                    </div>
+                    <div class="ck-card-meta">
+                        <span class="material-symbols-outlined fs-6">location_on</span>
+                        <span>Student Union, 1d ago</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
