@@ -1,5 +1,8 @@
 @page "/browse"
 @layout Layout.UserLayout
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
 
 <PageTitle>CampusKart | Browse Marketplace</PageTitle>
 
@@ -143,6 +146,17 @@
 </main>
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState> GetAuthenticationStateAsync { get; set; } = default!;
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    protected override Task OnInitializedAsync()
+    {
+        return Task.CompletedTask;
+    }
+
     private string searchQuery = "";
     private string activeSearchText = "";
     private string selectedCategory = "All";

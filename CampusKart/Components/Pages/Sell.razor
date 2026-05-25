@@ -1,0 +1,294 @@
+@page "/sell"
+@layout Layout.UserLayout
+@attribute [Authorize]
+
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@using System.ComponentModel.DataAnnotations
+
+<PageTitle>CampusKart | Post New Item</PageTitle>
+
+<main class="container py-5">
+    <div class="row g-5">
+        <!-- Form Section (col-lg-8) -->
+        <div class="col-lg-8">
+            <div class="card border-0 p-4 p-md-5 shadow-sm bg-white" style="border-radius: 16px; border: 1px solid var(--ck-border-light) !important;">
+                
+                <h1 class="h2 fw-bold text-ck-primary mb-4" style="font-weight: 700;">Post New Item</h1>
+
+                @if (isSuccessState)
+                {
+                    <!-- Elegant Listing Posted Success Toast banner -->
+                    <div class="alert alert-success border-0 rounded-3 p-4 mb-4 d-flex align-items-start gap-3 animate-fade-in shadow-sm" 
+                         style="background-color: rgba(40, 167, 69, 0.08); color: #28a745;" role="alert">
+                        <span class="material-symbols-outlined fs-2 mt-1">check_circle</span>
+                        <div>
+                            <h4 class="fw-bold m-0 fs-5">Listing Posted Successfully!</h4>
+                            <p class="mb-0 mt-2 small text-ck-secondary" style="color: #2e7d32 !important;">
+                                Your item <strong>"@postedItemTitle"</strong> is now live on the marketplace.
+                            </p>
+                            <p class="mb-0 mt-3 small fw-bold">
+                                Redirecting you to the marketplace feed in a moment...
+                            </p>
+                        </div>
+                    </div>
+                }
+
+                <EditForm Model="formModel" OnValidSubmit="HandleSubmit" FormName="postListing">
+                    <DataAnnotationsValidator />
+                    
+                    <div class="d-flex flex-column gap-4">
+                        <!-- Item Title -->
+                        <div>
+                            <label class="form-label fw-bold text-ck-secondary small mb-2">Item Title</label>
+                            <InputText class="form-control py-3 shadow-xs" 
+                                       style="border-radius: 8px; font-size: 15px;"
+                                       placeholder="e.g. Calculus Early Transcendentals 8th Edition" 
+                                       @bind-Value="formModel.Title" />
+                            <ValidationMessage For="() => formModel.Title" class="text-danger mt-1 small d-block" />
+                        </div>
+
+                        <div class="row g-3">
+                            <!-- Category Select -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-ck-secondary small mb-2">Category</label>
+                                <InputSelect class="form-select py-3 shadow-xs" 
+                                             style="border-radius: 8px; font-size: 15px;"
+                                             @bind-Value="formModel.Category">
+                                    <option value="" disabled selected>Select Category</option>
+                                    <option value="Books">Books</option>
+                                    <option value="Electronics">Electronics</option>
+                                    <option value="Furniture">Furniture</option>
+                                    <option value="Stationery">Stationery</option>
+                                </InputSelect>
+                                <ValidationMessage For="() => formModel.Category" class="text-danger mt-1 small d-block" />
+                            </div>
+
+                            <!-- Condition Select -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-ck-secondary small mb-2">Condition</label>
+                                <InputSelect class="form-select py-3 shadow-xs" 
+                                             style="border-radius: 8px; font-size: 15px;"
+                                             @bind-Value="formModel.Condition">
+                                    <option value="" disabled selected>Select Condition</option>
+                                    <option value="New">New</option>
+                                    <option value="Like New">Like New</option>
+                                    <option value="Good">Good</option>
+                                    <option value="Fair">Fair</option>
+                                </InputSelect>
+                                <ValidationMessage For="() => formModel.Condition" class="text-danger mt-1 small d-block" />
+                            </div>
+                        </div>
+
+                        <!-- Description Input -->
+                        <div>
+                            <label class="form-label fw-bold text-ck-secondary small mb-2">Description</label>
+                            <InputTextArea class="form-control py-3 shadow-xs" 
+                                           style="border-radius: 8px; font-size: 15px;"
+                                           placeholder="Describe the item's condition, features, or any specific details for the buyer..." 
+                                           rows="4" 
+                                           @bind-Value="formModel.Description" />
+                            <ValidationMessage For="() => formModel.Description" class="text-danger mt-1 small d-block" />
+                        </div>
+
+                        <!-- Price Input -->
+                        <div>
+                            <label class="form-label fw-bold text-ck-secondary small mb-2">Price in PKR</label>
+                            <div class="input-group">
+                                <span class="input-group-text py-3 border-end-0 bg-light text-slate-500 fw-bold" style="border-radius: 8px 0 0 8px; font-size: 15px;">
+                                    Rs.
+                                </span>
+                                <InputNumber class="form-control py-3 border-start-0 shadow-xs" 
+                                             style="border-radius: 0 8px 8px 0; font-size: 15px;"
+                                             placeholder="0" 
+                                             @bind-Value="formModel.Price" />
+                            </div>
+                            <ValidationMessage For="() => formModel.Price" class="text-danger mt-1 small d-block" />
+                        </div>
+
+                        <!-- Mock Photo Uploader -->
+                        <div>
+                            <label class="form-label fw-bold text-ck-secondary small mb-2">Upload Photos (max 4)</label>
+                            <div class="border-2 border-dashed rounded-3 p-5 text-center cursor-pointer group transition-all" 
+                                 style="background-color: var(--ck-background); border-color: var(--ck-border-color) !important; border-style: dashed !important; border-width: 2px !important;"
+                                 id="photo-upload-zone">
+                                <span class="material-symbols-outlined text-slate-400 mb-2 text-primary-container-hover" style="font-size: 32px;">photo_camera</span>
+                                <p class="mb-0 fw-semibold text-secondary-fixed-dim" style="font-size: 14px;">Click to upload or drag and drop</p>
+                                <p class="text-muted small mt-1 mb-0" style="font-size: 12px;">High quality photos sell faster!</p>
+                            </div>
+                        </div>
+
+                        <!-- Location Pin Selector -->
+                        <div>
+                            <label class="form-label fw-bold text-ck-secondary small mb-2">Set Drop-off Location</label>
+                            <div class="position-relative rounded-3 overflow-hidden border" style="border-color: var(--ck-border-light) !important; height: 260px;">
+                                <img alt="Map view placeholder" 
+                                     class="w-100 h-100 object-fit-cover grayscale" 
+                                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIyq3K3z5zHqjG3YkC4NqlA2-6wZJLbbFPKd-xThQJpLD_Ci9Cjw-LEGHeQ6dxiWQ1VjDi5ZTSBOmB0Bm5bsWrkrGUcuTMsoA2VdF6QUf3-eBi95_e3ZqYbbXmA4VUtycvBpEn24A_McRTwK02uUjmSH11F4wnyb8w0SdFRlZd0EcpG93evPXBLiYI7uZiP9gNXv4hIml6cpHMspxefN_3aBThE9db3c7lJ6iQuGkDv2-0PAKvF7Nky-5I1EDNVN6qIwzAGBQAE88" />
+                                
+                                <!-- Map absolute overlay pointer -->
+                                <div class="position-absolute top-50 start-50 translate-middle pointer-events-none">
+                                    <div class="bg-primary p-2 rounded-circle border border-white border-3 shadow">
+                                        <span class="material-symbols-outlined text-white fs-4" style="font-variation-settings: 'FILL' 1;">location_on</span>
+                                    </div>
+                                </div>
+                                <div class="position-absolute bottom-3 start-3 bg-white px-3 py-2 rounded shadow-sm border border-light d-flex align-items-center gap-2" style="bottom: 12px; left: 12px;">
+                                    <span class="material-symbols-outlined text-ck-primary-container fs-6">my_location</span>
+                                    <span class="small fw-bold text-ck-primary" style="font-size: 12px;">@formModel.Location</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button class="btn btn-ck-primary py-3 fw-bold fs-5 shadow-sm mt-3 w-100" type="submit" disabled="@isSuccessState">
+                            Post Listing
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+
+        <!-- Sidebar Section (col-lg-4) -->
+        <div class="col-lg-4">
+            <div class="d-flex flex-column gap-4 sticky-top" style="top: 100px; z-index: 10;">
+                
+                <!-- Quick Tips Panel -->
+                <div class="p-4 rounded-4" style="background-color: var(--ck-accent-light); border: 1px solid rgba(0, 86, 179, 0.08);">
+                    <h3 class="fs-5 fw-bold text-ck-primary mb-3">Quick Tips</h3>
+                    <ul class="list-unstyled d-flex flex-column gap-3 mb-0 text-start">
+                        <li class="d-flex gap-3">
+                            <span class="material-symbols-outlined text-ck-primary-container">verified</span>
+                            <p class="mb-0 text-secondary-fixed-dim small">Be descriptive about item flaws to build trust with buyers.</p>
+                        </li>
+                        <li class="d-flex gap-3">
+                            <span class="material-symbols-outlined text-ck-primary-container">payments</span>
+                            <p class="mb-0 text-secondary-fixed-dim small">Check similar items to price yours competitively.</p>
+                        </li>
+                        <li class="d-flex gap-3">
+                            <span class="material-symbols-outlined text-ck-primary-container">handshake</span>
+                            <p class="mb-0 text-secondary-fixed-dim small">Choose a well-lit, public drop-off location on campus.</p>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- ✨ Real-time Live Preview Panel -->
+                <div class="card border-0 p-4 shadow-sm bg-white" style="border-radius: 16px; border: 1px solid var(--ck-border-light) !important;">
+                    <h3 class="fs-6 fw-bold text-ck-secondary uppercase tracking-wider mb-3 text-start" style="font-family: 'Inter', sans-serif;">
+                        Live Preview
+                    </h3>
+                    
+                    <!-- Unified live preview card mirror -->
+                    <div class="ck-card text-start">
+                        <div class="ck-card-img-wrapper" style="height: 160px;">
+                            <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-light text-secondary">
+                                <span class="material-symbols-outlined fs-1 text-slate-400">@CategoryIcon</span>
+                                <span class="small fw-semibold mt-2 text-slate-500">
+                                    @(!string.IsNullOrEmpty(formModel.Category) ? formModel.Category : "Draft Item")
+                                </span>
+                            </div>
+                            <span class="ck-badge">@(!string.IsNullOrEmpty(formModel.Category) ? formModel.Category : "Category")</span>
+                        </div>
+                        <div class="ck-card-body d-flex flex-column h-100">
+                            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                <h4 class="ck-card-title mb-0 text-truncate fs-6" style="max-width: 150px;">
+                                    @(!string.IsNullOrEmpty(formModel.Title) ? formModel.Title : "Calculus Textbook (8th Ed)")
+                                </h4>
+                                <span class="bg-ck-accent-section text-ck-primary-container px-2 py-0.5 rounded text-uppercase fw-bold" style="font-size: 10px;">
+                                    @(!string.IsNullOrEmpty(formModel.Condition) ? formModel.Condition : "New")
+                                </span>
+                            </div>
+                            <p class="ck-card-price mb-2 text-primary fw-bold">
+                                @(formModel.Price.HasValue ? $"PKR {formModel.Price.Value:N0}" : "PKR 4,500")
+                            </p>
+                            <p class="text-truncate text-secondary small mb-2" style="font-size: 12px; max-height: 32px;">
+                                @(!string.IsNullOrEmpty(formModel.Description) ? formModel.Description : "No description provided yet...")
+                            </p>
+                            <div class="pt-2 border-top border-light d-flex justify-content-between align-items-center">
+                                <span class="text-ck-secondary small fw-semibold">You (Seller)</span>
+                                <div class="ck-card-meta small">
+                                    <span class="material-symbols-outlined fs-6" style="vertical-align: middle;">location_on</span>
+                                    <span style="font-size: 11px;">@formModel.Location</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-muted text-center mt-3 mb-0 small" style="font-size: 11px;">Your listing will look like this in the feed</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</main>
+
+<style>
+    #photo-upload-zone {
+        transition: all 0.2s ease-in-out;
+    }
+    #photo-upload-zone:hover {
+        background-color: var(--ck-accent-light) !important;
+        border-color: var(--ck-primary-container) !important;
+    }
+</style>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> GetAuthenticationStateAsync { get; set; } = default!;
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    private SellFormModel formModel = new();
+    private bool isSuccessState = false;
+    private string postedItemTitle = "";
+
+    protected override Task OnInitializedAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    private string CategoryIcon => formModel.Category switch
+    {
+        "Books" => "menu_book",
+        "Electronics" => "devices",
+        "Furniture" => "chair",
+        "Stationery" => "edit_note",
+        _ => "photo_camera"
+    };
+
+    private async Task HandleSubmit()
+    {
+        isSuccessState = true;
+        postedItemTitle = formModel.Title;
+
+        // Reset the form model after posting
+        var oldTitle = formModel.Title;
+        formModel = new();
+
+        // Standby for 3 seconds, then navigate user directly to browse page to see their listings
+        await Task.Delay(3000);
+        Navigation.NavigateTo("browse");
+    }
+
+    public class SellFormModel
+    {
+        [Required(ErrorMessage = "Item title is required.")]
+        [StringLength(100, ErrorMessage = "Title cannot exceed 100 characters.")]
+        public string Title { get; set; } = "";
+
+        [Required(ErrorMessage = "Category is required.")]
+        public string Category { get; set; } = "";
+
+        [Required(ErrorMessage = "Condition is required.")]
+        public string Condition { get; set; } = "";
+
+        [Required(ErrorMessage = "Description is required.")]
+        [StringLength(1000, ErrorMessage = "Description cannot exceed 1000 characters.")]
+        public string Description { get; set; } = "";
+
+        [Required(ErrorMessage = "Price is required.")]
+        [Range(1, 1000000, ErrorMessage = "Price must be between PKR 1 and PKR 1,000,000.")]
+        public int? Price { get; set; }
+
+        public string Location { get; set; } = "Main Campus Library, Gate 2";
+    }
+}

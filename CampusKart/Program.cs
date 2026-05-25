@@ -31,6 +31,26 @@ namespace CampusKart
                 })
                 .AddIdentityCookies();
 
+            builder.Services.AddAuthentication()
+                .AddGoogle(options =>
+                {
+                    options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "";
+                    options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
+                    options.Events.OnTicketReceived = context =>
+                    {
+                        var principal = context.Principal;
+                        var email = principal?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+                                    ?? principal?.FindFirst("email")?.Value
+                                    ?? principal?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+
+                        if (string.IsNullOrEmpty(email))
+                        {
+                            context.Fail("Email address not found in Google account claims.");
+                        }
+                        return Task.CompletedTask;
+                    };
+                });
+
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(connectionString));
@@ -40,6 +60,11 @@ namespace CampusKart
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddSignInManager()
                 .AddDefaultTokenProviders();
+
+            builder.Services.ConfigureApplicationCookie(options =>
+            {
+                options.LoginPath = "/login";
+            });
 
             builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
@@ -58,6 +83,9 @@ namespace CampusKart
 
             app.UseStaticFiles();
             app.UseAntiforgery();
+
+            app.UseAuthentication();
+            app.UseAuthorization();
 
             app.MapRazorComponents<App>()
                 .AddInteractiveWebAssemblyRenderMode()

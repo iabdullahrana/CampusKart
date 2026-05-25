@@ -1,8 +1,10 @@
-﻿@page "/Account/ExternalLogin"
+@page "/Account/ExternalLogin"
+@layout Layout.UserLayout
 
 @using System.ComponentModel.DataAnnotations
 @using System.Security.Claims
 @using System.Text
+@using Microsoft.EntityFrameworkCore
 @using System.Text.Encodings.Web
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
@@ -16,31 +18,137 @@
 @inject IdentityRedirectManager RedirectManager
 @inject ILogger<ExternalLogin> Logger
 
-<PageTitle>Register</PageTitle>
+<PageTitle>Associate Account - CampusKart</PageTitle>
 
-<StatusMessage Message="@message" />
-<h1>Register</h1>
-<h2>Associate your @ProviderDisplayName account.</h2>
-<hr />
+<div class="container py-5">
+    <div class="row justify-content-center my-4">
+        <div class="col-lg-7">
+            <!-- External Login Main Card -->
+            <div class="card border-0 shadow-sm overflow-hidden" style="border-radius: 16px; border: 1px solid var(--ck-border-light) !important;">
+                
+                <!-- Card Header Accent -->
+                <div class="py-2" style="background-color: var(--ck-primary);"></div>
+                
+                <div class="card-body p-4 p-md-5">
+                    
+                    @if (_initializationException is not null)
+                    {
+                        <!-- Critical System Error Display -->
+                        <div class="alert alert-danger border-0 rounded-3 p-4 mb-4" style="background-color: rgba(220, 53, 69, 0.08); color: #dc3545;" role="alert">
+                            <div class="d-flex align-items-center gap-2 mb-2 fw-bold">
+                                <span class="material-symbols-outlined fs-4">error</span>
+                                <span>External Login Failure</span>
+                            </div>
+                            <p class="mb-3 small">
+                                A critical error occurred while attempting to sign in with your Google account. Please review the details below:
+                            </p>
+                            <div class="bg-dark text-light p-3 rounded-2 text-start overflow-auto small mb-3" style="max-height: 220px; font-family: monospace; white-space: pre-wrap; font-size: 11px;">
+                                <strong>@_initializationException.Message</strong>
+                                <br /><br />
+                                @_initializationException.StackTrace
+                            </div>
+                            <div class="small fw-semibold">
+                                💡 Tip: If this is a SQL or database connection error, make sure your migrations are up to date. Run <code>dotnet ef database update</code> in your project directory and restart the app.
+                            </div>
+                        </div>
+                    }
 
-<div  class="alert alert-info">
-    You've successfully authenticated with <strong>@ProviderDisplayName</strong>.
-    Please enter an email address for this site below and click the Register button to finish
-    logging in.
-</div>
+                    @if (externalLoginInfo is null && _initializationException is null)
+                    {
+                        <!-- Loading State -->
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <h3 class="fw-bold text-ck-primary mt-2">Connecting with Google</h3>
+                            <p class="text-ck-secondary small mb-0">Verifying secure external identity tokens...</p>
+                        </div>
+                    }
+                    else if (externalLoginInfo is not null)
+                    {
+                        <!-- Header Presentation -->
+                        <div class="mb-4 text-center">
+                            <div class="d-inline-flex align-items-center justify-content-center bg-ck-accent-light rounded-circle p-3 mb-3 text-ck-primary-container" style="width: 64px; height: 64px;">
+                                <span class="material-symbols-outlined fs-1">verified_user</span>
+                            </div>
+                            <h1 class="h3 fw-bold text-ck-primary mb-1">Associate Your Account</h1>
+                            <p class="text-ck-secondary small mb-0">
+                                Link your Google profile to complete your CampusKart registration
+                            </p>
+                        </div>
 
-<div class="row">
-    <div class="col-md-4">
-        <EditForm Model="Input" OnValidSubmit="OnValidSubmitAsync" FormName="confirmation" method="post">
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert" />
-            <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.Email" class="form-control" autocomplete="email" placeholder="Please enter your email." />
-                <label for="email" class="form-label">Email</label>
-                <ValidationMessage For="() => Input.Email" />
+                        <!-- Status/Error Alerts -->
+                        <StatusMessage Message="@message" />
+
+                        <div class="alert alert-info border-0 rounded-3 p-3 mb-4 d-flex align-items-start gap-3 small" style="background-color: rgba(0, 86, 179, 0.04); color: var(--ck-primary-container); line-height: 1.5;">
+                            <span class="material-symbols-outlined fs-5 mt-0.5" style="color: var(--ck-primary);">info</span>
+                            <div>
+                                Authenticated successfully with <strong>@ProviderDisplayName</strong> using <strong>@_googleEmail</strong>.
+                                <br /><br />
+                                <span class="fw-bold text-danger">Why am I seeing this screen instead of logging in?</span>
+                                <br />
+                                Google verified your email successfully, but the automatic background link encountered a verification prompt or duplicate configuration. Please enter your email address below to complete registration.
+                            </div>
+                        </div>
+
+                        <!-- Manual Finish Form -->
+                        <EditForm Model="Input" OnValidSubmit="OnValidSubmitAsync" FormName="confirmation" method="post" class="text-start">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary class="text-danger small mb-3" role="alert" />
+                            
+                            <div class="mb-4">
+                                <label for="email" class="form-label fw-bold small text-ck-primary">Email address</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0" style="border-radius: 8px 0 0 8px; border-color: var(--ck-border-color);"><span class="material-symbols-outlined text-ck-secondary fs-5">mail</span></span>
+                                    <InputText id="email" @bind-Value="Input.Email" class="form-control border-start-0 py-2.5" autocomplete="email" placeholder="e.g., student@domain.com" style="border-radius: 0 8px 8px 0; border-color: var(--ck-border-color);" />
+                                </div>
+                                <div class="form-text text-ck-secondary small mt-2">
+                                    Please enter your email to complete registration.
+                                </div>
+                                <ValidationMessage For="() => Input.Email" class="text-danger small mt-1" />
+                            </div>
+
+                            <button type="submit" class="btn btn-ck-primary py-2.5 w-100 fw-bold fs-6">Associate & Log In</button>
+                        </EditForm>
+                    }
+
+                    <!-- Collapsible Diagnostic Console -->
+                    <div class="mt-5 border-top pt-4 text-start">
+                        <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 small border-0 p-0 text-ck-secondary hover-primary" type="button" @onclick="ToggleDiagnostics" style="background: none; font-size: 12px; font-weight: 500;">
+                            <span class="material-symbols-outlined fs-6" style="vertical-align: middle;">bug_report</span>
+                            <span>@(showDiagnostics ? "Hide" : "Show") System Diagnostics</span>
+                        </button>
+
+                        @if (showDiagnostics)
+                        {
+                            <div class="bg-light p-3 rounded-3 border mt-3 text-dark font-monospace" style="font-size: 11px; line-height: 1.6;">
+                                <h6 class="fw-bold mb-2 border-bottom pb-1 text-uppercase text-ck-primary" style="font-size: 11px; letter-spacing: 0.05em;">Debug Variables</h6>
+                                <div class="row g-1">
+                                    <div class="col-5 text-ck-secondary">HTTP Method:</div>
+                                    <div class="col-7 fw-bold">@(HttpContext?.Request?.Method ?? "NULL")</div>
+                                    
+                                    <div class="col-5 text-ck-secondary">Action Parameter:</div>
+                                    <div class="col-7 fw-bold text-truncate">@(Action ?? "NULL (Bypassed)")</div>
+                                    
+                                    <div class="col-5 text-ck-secondary">Return Destination:</div>
+                                    <div class="col-7 fw-bold text-truncate">@(ReturnUrl ?? "/")</div>
+                                    
+                                    <div class="col-5 text-ck-secondary">Google Provider info:</div>
+                                    <div class="col-7 fw-bold text-truncate">@(ProviderDisplayName ?? "Unresolved")</div>
+
+                                    <div class="col-5 text-ck-secondary">OAuth Email Claim:</div>
+                                    <div class="col-7 fw-bold text-truncate text-primary">@(_googleEmail ?? "Empty")</div>
+
+                                    <div class="col-5 text-ck-secondary">Local Database Status:</div>
+                                    <div class="col-7 fw-bold text-truncate @(dbCheckFailed ? "text-danger" : "text-success")">@_dbCheckResult</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                </div>
             </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
-        </EditForm>
+        </div>
     </div>
 </div>
 
@@ -49,6 +157,11 @@
 
     private string? message;
     private ExternalLoginInfo externalLoginInfo = default!;
+    private string? _googleEmail;
+    private Exception? _initializationException;
+    private bool showDiagnostics = false;
+    private string _dbCheckResult = "Pending Connection...";
+    private bool dbCheckFailed = false;
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
@@ -65,40 +178,82 @@
     [SupplyParameterFromQuery]
     private string? Action { get; set; }
 
-    private string? ProviderDisplayName => externalLoginInfo.ProviderDisplayName;
+    private string? ProviderDisplayName => externalLoginInfo?.ProviderDisplayName;
+
+    private void ToggleDiagnostics()
+    {
+        showDiagnostics = !showDiagnostics;
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        if (RemoteError is not null)
+        try
         {
-            RedirectManager.RedirectToWithStatus("Account/Login", $"Error from external provider: {RemoteError}", HttpContext);
-        }
-
-        var info = await SignInManager.GetExternalLoginInfoAsync();
-        if (info is null)
-        {
-            RedirectManager.RedirectToWithStatus("Account/Login", "Error loading external login information.", HttpContext);
-        }
-
-        externalLoginInfo = info;
-
-        if (HttpMethods.IsGet(HttpContext.Request.Method))
-        {
-            if (Action == LoginCallbackAction)
+            // Proactively verify database and user connection status
+            try
             {
-                await OnLoginCallbackAsync();
+                var count = await UserManager.Users.Take(1).CountAsync();
+                _dbCheckResult = $"Online (DB works)";
+                dbCheckFailed = false;
+            }
+            catch (Exception ex)
+            {
+                dbCheckFailed = true;
+                _dbCheckResult = "Offline / Connection Failed";
+                throw new Exception($"Database offline. Check LocalDB server status. Internal Error: {ex.Message}", ex);
+            }
+
+            if (RemoteError is not null)
+            {
+                RedirectManager.RedirectToWithStatus("Account/Login", $"Error from external provider: {RemoteError}", HttpContext);
                 return;
             }
 
-            // We should only reach this page via the login callback, so redirect back to
-            // the login page if we get here some other way.
-            RedirectManager.RedirectTo("Account/Login");
+            var info = await SignInManager.GetExternalLoginInfoAsync();
+            if (info is null)
+            {
+                RedirectManager.RedirectToWithStatus("Account/Login", "Error loading external login information.", HttpContext);
+                return;
+            }
+
+            externalLoginInfo = info;
+            _googleEmail = info.Principal.FindFirstValue(ClaimTypes.Email);
+            Input.Email = _googleEmail ?? "";
+
+            if (HttpMethods.IsGet(HttpContext.Request.Method))
+            {
+                if (Action == LoginCallbackAction)
+                {
+                    await OnLoginCallbackAsync();
+                    return;
+                }
+
+                // Default fallthrough - redirect back if page loaded without action parameters
+                RedirectManager.RedirectTo("Account/Login");
+            }
+        }
+        catch (NavigationException)
+        {
+            // Re-throw Blazor navigation exception so SSR redirect functions normally
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _initializationException = ex;
+            Logger.LogError(ex, "Exception thrown during ExternalLogin page initialization.");
         }
     }
 
     private async Task OnLoginCallbackAsync()
     {
-        // Sign in the user with this external login provider if the user already has a login.
+        // Enforce basic email presence
+        if (string.IsNullOrEmpty(_googleEmail))
+        {
+            RedirectManager.RedirectToWithStatus("login", "Error: Email address not found in Google account claims.", HttpContext);
+            return;
+        }
+
+        // Try to sign in the user with this external login provider
         var result = await SignInManager.ExternalLoginSignInAsync(
             externalLoginInfo.LoginProvider,
             externalLoginInfo.ProviderKey,
@@ -107,61 +262,140 @@
 
         if (result.Succeeded)
         {
-            Logger.LogInformation(
-                "{Name} logged in with {LoginProvider} provider.",
-                externalLoginInfo.Principal.Identity?.Name,
-                externalLoginInfo.LoginProvider);
+            Logger.LogInformation("{Name} logged in with {LoginProvider} provider.", _googleEmail, externalLoginInfo.LoginProvider);
             RedirectManager.RedirectTo(ReturnUrl);
         }
         else if (result.IsLockedOut)
         {
             RedirectManager.RedirectTo("Account/Lockout");
         }
-
-        // If the user does not have an account, then ask the user to create an account.
-        if (externalLoginInfo.Principal.HasClaim(c => c.Type == ClaimTypes.Email))
+        else
         {
-            Input.Email = externalLoginInfo.Principal.FindFirstValue(ClaimTypes.Email) ?? "";
+            // Crucial Security/UX Fix: First check if a local user profile already exists with this exact email!
+            var existingUser = await UserManager.FindByEmailAsync(_googleEmail);
+            if (existingUser is not null)
+            {
+                Logger.LogInformation("Connecting existing account for email '{Email}' with Google External Login.", _googleEmail);
+                var addLoginResult = await UserManager.AddLoginAsync(existingUser, externalLoginInfo);
+                if (addLoginResult.Succeeded)
+                {
+                    // Mark as verified because Google has already validated this student identity
+                    if (!existingUser.EmailConfirmed)
+                    {
+                        existingUser.EmailConfirmed = true;
+                        await UserManager.UpdateAsync(existingUser);
+                    }
+
+                    await SignInManager.SignInAsync(existingUser, isPersistent: false, externalLoginInfo.LoginProvider);
+                    RedirectManager.RedirectTo(ReturnUrl);
+                }
+                else
+                {
+                    var errors = string.Join(", ", addLoginResult.Errors.Select(e => e.Description));
+                    RedirectManager.RedirectToWithStatus("login", $"Error linking Google credentials to your profile: {errors}", HttpContext);
+                }
+                return;
+            }
+
+            // Otherwise, auto-register the student on their first login!
+            var user = CreateUser();
+            var emailStore = GetEmailStore();
+
+            await UserStore.SetUserNameAsync(user, _googleEmail, CancellationToken.None);
+            await emailStore.SetEmailAsync(user, _googleEmail, CancellationToken.None);
+
+            var createResult = await UserManager.CreateAsync(user);
+            if (createResult.Succeeded)
+            {
+                var addLoginResult = await UserManager.AddLoginAsync(user, externalLoginInfo);
+                if (addLoginResult.Succeeded)
+                {
+                    Logger.LogInformation("User account created successfully via Google SSO.");
+
+                    // Verify email in background to bypass manual confirmation templates
+                    user.EmailConfirmed = true;
+                    await UserManager.UpdateAsync(user);
+
+                    await SignInManager.SignInAsync(user, isPersistent: false, externalLoginInfo.LoginProvider);
+                    RedirectManager.RedirectTo(ReturnUrl);
+                }
+                else
+                {
+                    RedirectManager.RedirectToWithStatus("login", $"Error associating login: {string.Join(", ", addLoginResult.Errors.Select(e => e.Description))}", HttpContext);
+                }
+            }
+            else
+            {
+                RedirectManager.RedirectToWithStatus("login", $"Error registering account: {string.Join(", ", createResult.Errors.Select(e => e.Description))}", HttpContext);
+            }
         }
     }
 
     private async Task OnValidSubmitAsync()
     {
-        var emailStore = GetEmailStore();
-        var user = CreateUser();
-
-        await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
-        await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
-
-        var result = await UserManager.CreateAsync(user);
-        if (result.Succeeded)
+        if (string.IsNullOrEmpty(Input.Email))
         {
-            result = await UserManager.AddLoginAsync(user, externalLoginInfo);
-            if (result.Succeeded)
-            {
-                Logger.LogInformation("User created an account using {Name} provider.", externalLoginInfo.LoginProvider);
-
-                var userId = await UserManager.GetUserIdAsync(user);
-                var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
-                code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-
-                var callbackUrl = NavigationManager.GetUriWithQueryParameters(
-                    NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
-                    new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code });
-                await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
-
-                // If account confirmation is required, we need to show the link if we don't have a real email sender
-                if (UserManager.Options.SignIn.RequireConfirmedAccount)
-                {
-                    RedirectManager.RedirectTo("Account/RegisterConfirmation", new() { ["email"] = Input.Email });
-                }
-
-                await SignInManager.SignInAsync(user, isPersistent: false, externalLoginInfo.LoginProvider);
-                RedirectManager.RedirectTo(ReturnUrl);
-            }
+            message = "Error: Email address is required.";
+            return;
         }
 
-        message = $"Error: {string.Join(",", result.Errors.Select(error => error.Description))}";
+        try
+        {
+            // First check if an account with this email exists
+            var existingUser = await UserManager.FindByEmailAsync(Input.Email);
+            if (existingUser is not null)
+            {
+                var addLoginResult = await UserManager.AddLoginAsync(existingUser, externalLoginInfo);
+                if (addLoginResult.Succeeded)
+                {
+                    if (!existingUser.EmailConfirmed)
+                    {
+                        existingUser.EmailConfirmed = true;
+                        await UserManager.UpdateAsync(existingUser);
+                    }
+
+                    await SignInManager.SignInAsync(existingUser, isPersistent: false, externalLoginInfo.LoginProvider);
+                    RedirectManager.RedirectTo(ReturnUrl);
+                }
+                else
+                {
+                    message = $"Error: {string.Join(", ", addLoginResult.Errors.Select(e => e.Description))}";
+                }
+                return;
+            }
+
+            var emailStore = GetEmailStore();
+            var user = CreateUser();
+
+            await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
+            await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+
+            var result = await UserManager.CreateAsync(user);
+            if (result.Succeeded)
+            {
+                result = await UserManager.AddLoginAsync(user, externalLoginInfo);
+                if (result.Succeeded)
+                {
+                    Logger.LogInformation("User created an account using {Name} provider.", externalLoginInfo.LoginProvider);
+
+                    user.EmailConfirmed = true;
+                    await UserManager.UpdateAsync(user);
+
+                    await SignInManager.SignInAsync(user, isPersistent: false, externalLoginInfo.LoginProvider);
+                    RedirectManager.RedirectTo(ReturnUrl);
+                }
+            }
+
+            message = $"Error: {string.Join(",", result.Errors.Select(error => error.Description))}";
+        }
+        catch (NavigationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+        }
     }
 
     private ApplicationUser CreateUser()
