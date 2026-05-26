@@ -3,10 +3,24 @@
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
+@inject CampusKart.Data.ApplicationDbContext DbContext
+@using Microsoft.EntityFrameworkCore
 
 <PageTitle>CampusKart | Browse Marketplace</PageTitle>
 
 <main class="container py-4">
+    @if (!string.IsNullOrEmpty(_dbError))
+    {
+        <div class="alert alert-danger border-0 rounded-3 p-4 mb-4 shadow-sm" style="background-color: rgba(220, 53, 69, 0.08); color: #dc3545;" role="alert">
+            <div class="d-flex align-items-center gap-2 mb-2 fw-bold">
+                <span class="material-symbols-outlined fs-4">database_off</span>
+                <span>Database Query Failure</span>
+            </div>
+            <p class="mb-0 small">
+                We encountered an error connecting to the database or loading advertisements. Technical Details: <code>@_dbError</code>
+            </p>
+        </div>
+    }
     <!-- Search Section -->
     <section class="mb-4">
         <div class="row g-2">
@@ -152,9 +166,31 @@
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
 
-    protected override Task OnInitializedAsync()
+    private List<MarketplaceItem> dbItems = new();
+    private string? _dbError;
+
+    protected override async Task OnInitializedAsync()
     {
-        return Task.CompletedTask;
+        try
+        {
+            var listings = await DbContext.Listings.OrderByDescending(l => l.DatePosted).ToListAsync();
+            dbItems = listings.Select(l => new MarketplaceItem
+            {
+                Title = l.Title,
+                Category = l.Category,
+                Condition = l.Condition,
+                Price = l.Price,
+                ImageUrl = l.ImageUrl,
+                SellerName = l.SellerName,
+                Location = l.Location,
+                DatePosted = l.DatePosted
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            _dbError = ex.Message;
+            Console.WriteLine($"Error loading listings from SQL Server: {ex.Message}");
+        }
     }
 
     private string searchQuery = "";
@@ -193,7 +229,7 @@
     {
         get
         {
-            var items = mockItems.AsEnumerable();
+            var items = dbItems.AsEnumerable();
 
             // Search Filter (checks title, seller, and location)
             if (!string.IsNullOrWhiteSpace(activeSearchText))
@@ -238,74 +274,5 @@
         public DateTime DatePosted { get; set; }
     }
 
-    // Mock seeded listings matching the design spec
-    private readonly List<MarketplaceItem> mockItems = new()
-    {
-        new MarketplaceItem
-        {
-            Title = "Introduction to Algorithms",
-            Category = "Books",
-            Condition = "New",
-            Price = 4500,
-            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuCUciMTQGyq8jDrWn9Nysoro7QgRthNhqQMi2X743xstAu_iDRMHm_mbPgY_UfvZnQkA_90rw5eu_BDC8AXWjtiEx1h8yW2JlhHpFvaAs0LHULGcD4OdwLSNRlnmDp91DHWdQsAIfs5kJ-5ZyFZxq5Axez4zZMcf-vc6QQZ12KAJ_lFALHuSpo4qIuost7DLvzY7TKI1fS08n9F6d-DTDPXw07GlpM-WQLcU2bn32MhdqZPx5AHQzlhoMf_KLy12RIo4AjoK-fyr7w",
-            SellerName = "Ahmad Raza",
-            Location = "LUMS, Lahore",
-            DatePosted = DateTime.Now.AddHours(-2)
-        },
-        new MarketplaceItem
-        {
-            Title = "MacBook Air M1 2020",
-            Category = "Electronics",
-            Condition = "Used",
-            Price = 165000,
-            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuA4HnfPbgzFQazyz9VziH8I1SrCXR83ZTp4BGSd_wzaBaamvBVGfDtxpifPHUYusvWr8r0TwocqnFvK_ozT9p1l0hACxxFrniZqvDxeN01zCiEslaleQYILnNVmWsr6Yt-LSrig0KXqXapjzHPdoDv1sY0fjS0D2etBUUaq33c-ycof1WfBH_XYjvA7pyJLxRYnZh6zuZXH_QzQpfYv-Fd5XGD2c00BTfwXKVfJNPypyvBjHKHHjH_UFojBrz_dDoRpShIjDVYRIGE",
-            SellerName = "Sarah Khan",
-            Location = "NUST, Islamabad",
-            DatePosted = DateTime.Now.AddHours(-4)
-        },
-        new MarketplaceItem
-        {
-            Title = "Ergonomic Study Chair",
-            Category = "Furniture",
-            Condition = "Used",
-            Price = 12000,
-            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuCJrsgXkdIqZEAMJaClb-D2Do_ere_dUUJDuHMxZF6lzIRI58lhqk6eLi-r5C3lKmO0RdFVKgy0mAo6B_p0SyFQMzHWsq6FHuEpqLVzhbBTSbSI5zOt5WEZBziIIfpll9zrEkapPhN42Y0-idF8nFEybHeG31S55_39ZQajZfCGeuaSeATgalWOav_MmNopP83uLdMbWuW2frAXEe-TonA-jzq0-8nj68Sbc8E4EkPi_iKWFTnsnFUHy9bvMtWDn6J8T7Ts1Rs3EIw",
-            SellerName = "Zain Malik",
-            Location = "IBA, Karachi",
-            DatePosted = DateTime.Now.AddHours(-6)
-        },
-        new MarketplaceItem
-        {
-            Title = "Premium Art Supplies Kit",
-            Category = "Stationery",
-            Condition = "New",
-            Price = 3200,
-            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuCGFF11w7sq2ULliEH27irS_THHMvXFqylD_-nrGYvcx_B_1-nA4AnbGCIV8F7T4awUpqMRM6sxoKL8SOX-igzomoiN5n3_HkgcOF9_cTzKXCLkJD3tD26-wTjxsYf6-jyoXNCmjXAR6T1xsgPkqi8JAnnFPC6DOwBye9WAjr5l4e5qWykVHlNny_zT5yJhmx2cF04E03qoED6sqDugmJ6dwdmX9MG2huerflBe-XssdLTeTr6GrLRWfqTp3H4uTusXR_5Gwc47Ovw",
-            SellerName = "Fatima Ali",
-            Location = "NCA, Lahore",
-            DatePosted = DateTime.Now.AddHours(-12)
-        },
-        new MarketplaceItem
-        {
-            Title = "Sony WH-1000XM4",
-            Category = "Electronics",
-            Condition = "Used",
-            Price = 45000,
-            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuBx9I1ipUcY9lJBswC9kUmkYxx4OOjA-kCvYhtfSlnVEhqwGwZfLxiwu6Z6uI4eoxMXlsXQP4v4V86Tfg2OVBoEu4usKmbDGDYWcP44ky2sJzKhes2lddgAiReCTf4aftrXInVSbNUy23MbZbIJvDWRs8pXFZe-dZvNnR3qRcSouugjLkWjGN9hsMvNg3RbLzRSbewG9vdMVaDCkvO7ZOWl5zBnyfQ1p6FNy_8_WsrmGMUNsDMZdfRReRQ0X4N2uaq_GKGEbAahkoY",
-            SellerName = "Bilal Sheikh",
-            Location = "GIKI, Swabi",
-            DatePosted = DateTime.Now.AddDays(-1)
-        },
-        new MarketplaceItem
-        {
-            Title = "Casio Graphic Calculator",
-            Category = "Electronics",
-            Condition = "New",
-            Price = 8500,
-            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuBrqG_0rl-4gMSq_vBJ8U6uV1WXZQGFKIRFFm16Oo2AVS1THiC76e-HQ2B-RKfrcC2kvyvO5F0_gDE-rJVrbNoMCZ8oXiWWvT0zw5ZIKPe7-TMhlcYPaCA54v0STtYhbQ5jLMmTz1TQjWaOIlKGsqe5FiuOvq6tsf4UFnpFgJ6Ul41MaLiAgJRTC3SVKmcjGx-1Ov29caqi3NavAp8ybWaKZ_ucEIo8jHsKVltwWOGJ5pxtCUXNG06FHPm3T95W1J90x6AmY5zyDvo",
-            SellerName = "Usman Tariq",
-            Location = "FAST, Lahore",
-            DatePosted = DateTime.Now.AddDays(-2)
-        }
-    };
+
 }
