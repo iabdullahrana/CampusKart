@@ -1,5 +1,8 @@
 @page "/"
 @layout Layout.UserLayout
+@inject CampusKart.Data.ApplicationDbContext DbContext
+@using Microsoft.EntityFrameworkCore
+@using CampusKart.Data
 
 <PageTitle>CampusKart | Peer-to-Peer Student Marketplace</PageTitle>
 
@@ -15,8 +18,8 @@
                 Your university's own marketplace. Designed for the unique needs of students, from textbooks to dorm essentials.
             </p>
             <div class="d-flex flex-wrap gap-3 pt-3">
-                <a href="#" class="btn-ck-primary text-decoration-none text-center">Start Browsing</a>
-                <a href="#" class="btn-ck-outline text-decoration-none text-center">Post an Item</a>
+                <a href="browse" class="btn-ck-primary text-decoration-none text-center">Start Browsing</a>
+                <a href="sell" class="btn-ck-outline text-decoration-none text-center">Post an Item</a>
             </div>
         </div>
         <!-- Hero Graphic/Image Card -->
@@ -39,7 +42,7 @@
         <div class="row row-cols-2 row-cols-md-4 g-4">
             <!-- Books Category -->
             <div class="col">
-                <a class="ck-cat-card" href="#">
+                <a class="ck-cat-card" href="browse">
                     <div class="ck-cat-icon">
                         <span class="material-symbols-outlined fs-2">menu_book</span>
                     </div>
@@ -49,7 +52,7 @@
             
             <!-- Electronics Category -->
             <div class="col">
-                <a class="ck-cat-card" href="#">
+                <a class="ck-cat-card" href="browse">
                     <div class="ck-cat-icon">
                         <span class="material-symbols-outlined fs-2">devices</span>
                     </div>
@@ -59,7 +62,7 @@
             
             <!-- Furniture Category -->
             <div class="col">
-                <a class="ck-cat-card" href="#">
+                <a class="ck-cat-card" href="browse">
                     <div class="ck-cat-icon">
                         <span class="material-symbols-outlined fs-2">chair</span>
                     </div>
@@ -69,7 +72,7 @@
             
             <!-- Stationery Category -->
             <div class="col">
-                <a class="ck-cat-card" href="#">
+                <a class="ck-cat-card" href="browse">
                     <div class="ck-cat-icon">
                         <span class="material-symbols-outlined fs-2">edit_note</span>
                     </div>
@@ -87,71 +90,127 @@
             <h2 class="h2 fw-bold text-ck-primary mb-1">Newly Listed</h2>
             <p class="text-ck-secondary mb-0">Items just posted by students near you.</p>
         </div>
-        <a href="#" class="text-ck-primary-container fw-semibold text-decoration-none hover-underline d-flex align-items-center gap-1">
+        <a href="browse" class="text-ck-primary-container fw-semibold text-decoration-none hover-underline d-flex align-items-center gap-1">
             View all listings 
             <span class="material-symbols-outlined fs-6" style="vertical-align: middle;">arrow_forward</span>
         </a>
     </div>
 
     <div class="row g-4 justify-content-center">
-        <!-- Listing Card 1: Books -->
-        <div class="col-md-6 col-lg-4">
-            <div class="ck-card h-100">
-                <div class="ck-card-img-wrapper">
-                    <img alt="Stack of university textbooks" class="ck-card-img" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCoKJ90v5328lZg4H2q0wWyx18YzhfGCZ72Jyrv_ZMMG7BFQcXGaDmQaDoz6CGKD4MDGmC6G1FOl9mq2NpjlO4whnyvo5uFkAZ7LRkJZCZ2YqH5DVVd_S4bh2f_u9-9Qo5asGtuHwZis-bZlNePjqvMZxu4NkQ4sdxt8-lMiGElDCksiBs_oD4HHb02EEETCjkIYzG5PaR7OWyd3mepiUVFv_6Tz0CbYEJDY26JAGul85Dc3ZGEIQDLM_MC7LP0SMgzBDOhmY13VZE" />
-                    <span class="ck-badge">Books</span>
+        @if (recentListings.Any())
+        {
+            @foreach (var item in recentListings)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <a href="listing/@item.Id" class="text-decoration-none text-dark d-block h-100">
+                        <div class="ck-card h-100">
+                            <div class="ck-card-img-wrapper">
+                                <img alt="@item.Title" class="ck-card-img" src="@item.ImageUrl" />
+                                <span class="ck-badge">@item.Category</span>
+                            </div>
+                            <div class="ck-card-body d-flex flex-column h-100">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                    <h3 class="ck-card-title mb-0 text-truncate text-ck-primary fw-bold" style="font-size: 18px;" title="@item.Title">@item.Title</h3>
+                                    <span class="bg-ck-accent-section text-ck-primary-container px-2 py-0.5 rounded text-uppercase" style="font-size: 11px; font-weight: 700;">
+                                        @item.Condition
+                                    </span>
+                                </div>
+                                <p class="ck-card-price mb-3">PKR @item.Price.ToString("N0")</p>
+                                
+                                <div class="pt-2 mt-auto border-top border-light d-flex justify-content-between align-items-center">
+                                    <span class="text-ck-secondary small fw-semibold">@item.SellerName</span>
+                                    <div class="ck-card-meta small">
+                                        <span class="material-symbols-outlined fs-6" style="vertical-align: middle;">location_on</span>
+                                        <span>@item.Location</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
                 </div>
-                <div class="ck-card-body">
-                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                        <h3 class="ck-card-title mb-0">Intro to Psychology (12th Ed)</h3>
-                        <span class="ck-card-price">$45</span>
+            }
+        }
+        else
+        {
+            <!-- Fallback Static High-Quality Mockup Listings if DB is empty -->
+            <!-- Listing Card 1: Books -->
+            <div class="col-md-6 col-lg-4">
+                <div class="ck-card h-100">
+                    <div class="ck-card-img-wrapper">
+                        <img alt="Stack of university textbooks" class="ck-card-img" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCoKJ90v5328lZg4H2q0wWyx18YzhfGCZ72Jyrv_ZMMG7BFQcXGaDmQaDoz6CGKD4MDGmC6G1FOl9mq2NpjlO4whnyvo5uFkAZ7LRkJZCZ2YqH5DVVd_S4bh2f_u9-9Qo5asGtuHwZis-bZlNePjqvMZxu4NkQ4sdxt8-lMiGElDCksiBs_oD4HHb02EEETCjkIYzG5PaR7OWyd3mepiUVFv_6Tz0CbYEJDY26JAGul85Dc3ZGEIQDLM_MC7LP0SMgzBDOhmY13VZE" />
+                        <span class="ck-badge">Books</span>
                     </div>
-                    <div class="ck-card-meta">
-                        <span class="material-symbols-outlined fs-6">location_on</span>
-                        <span>Main Library, 2h ago</span>
+                    <div class="ck-card-body">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <h3 class="ck-card-title mb-0">Intro to Psychology (12th Ed)</h3>
+                            <span class="ck-card-price">PKR 4,500</span>
+                        </div>
+                        <div class="ck-card-meta">
+                            <span class="material-symbols-outlined fs-6">location_on</span>
+                            <span>Main Library, 2h ago</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Listing Card 2: Furniture -->
-        <div class="col-md-6 col-lg-4">
-            <div class="ck-card h-100">
-                <div class="ck-card-img-wrapper">
-                    <img alt="Minimalist LED desk lamp" class="ck-card-img" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCthyl4pcd2l5hNA_2r6l-B_FRb9bkQcSsCyavVZg_j3sn6qAN8wjhWFa1gbBkEo3ay9JiIjDjxajeHluGxWIFqMZg8Bq2zOl-4Y3pZWnHGk0z3Lg7wAmdUWW6d2Mge5yXEJM8Reub8AiXaoObaOKUjSQRgZu64UH5Jdlj7q7MtqxHVuuliTeuPkFqFgHFDwnl5IUzjsVtyYYaaB7d0sgDWPlg-zW5kLOSTZ46anqpLFhvt4yUoxLgDCRz-X7kGS5TG38MfHsAQROA" />
-                    <span class="ck-badge">Furniture</span>
-                </div>
-                <div class="ck-card-body">
-                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                        <h3 class="ck-card-title mb-0">Minimalist LED Desk Lamp</h3>
-                        <span class="ck-card-price">$15</span>
+            <!-- Listing Card 2: Furniture -->
+            <div class="col-md-6 col-lg-4">
+                <div class="ck-card h-100">
+                    <div class="ck-card-img-wrapper">
+                        <img alt="Minimalist LED desk lamp" class="ck-card-img" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCthyl4pcd2l5hNA_2r6l-B_FRb9bkQcSsCyavVZg_j3sn6qAN8wjhWFa1gbBkEo3ay9JiIjDjxajeHluGxWIFqMZg8Bq2zOl-4Y3pZWnHGk0z3Lg7wAmdUWW6d2Mge5yXEJM8Reub8AiXaoObaOKUjSQRgZu64UH5Jdlj7q7MtqxHVuuliTeuPkFqFgHFDwnl5IUzjsVtyYYaaB7d0sgDWPlg-zW5kLOSTZ46anqpLFhvt4yUoxLgDCRz-X7kGS5TG38MfHsAQROA" />
+                        <span class="ck-badge">Furniture</span>
                     </div>
-                    <div class="ck-card-meta">
-                        <span class="material-symbols-outlined fs-6">location_on</span>
-                        <span>North Dorms, 5h ago</span>
+                    <div class="ck-card-body">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <h3 class="ck-card-title mb-0">Minimalist LED Desk Lamp</h3>
+                            <span class="ck-card-price">PKR 1,500</span>
+                        </div>
+                        <div class="ck-card-meta">
+                            <span class="material-symbols-outlined fs-6">location_on</span>
+                            <span>North Dorms, 5h ago</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Listing Card 3: Electronics -->
-        <div class="col-md-6 col-lg-4">
-            <div class="ck-card h-100">
-                <div class="ck-card-img-wrapper">
-                    <img alt="Modern noise-canceling headphones" class="ck-card-img" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAnReDOkLaWz6-AZJ1bw4bN6rEvJaxN-Nmxa1UslibIRdX0Cw9_kHbgUcOaxXU1u3pKjMsit9Ez1c_QQui3dvXrjvNILG2rITEqJJlRt0ytELlgrHfwsuH3CJkjHzdbtwGfZAcp8XpcEbXpgSoimMZG_xr7wQOZwg3_T7e0nQXazENehtRB5VZpLNKxjfxBHAjhykw_Ov6cjtNJv_w0QIHVUC_QsYZ4KuuE9nIVD0V2hQrBrpXuLXv8Riv7umFy2u96Dv9tx52eq3s" />
-                    <span class="ck-badge">Electronics</span>
-                </div>
-                <div class="ck-card-body">
-                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                        <h3 class="ck-card-title mb-0">Noise Canceling Headphones</h3>
-                        <span class="ck-card-price">$120</span>
+            <!-- Listing Card 3: Electronics -->
+            <div class="col-md-6 col-lg-4">
+                <div class="ck-card h-100">
+                    <div class="ck-card-img-wrapper">
+                        <img alt="Modern noise-canceling headphones" class="ck-card-img" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAnReDOkLaWz6-AZJ1bw4bN6rEvJaxN-Nmxa1UslibIRdX0Cw9_kHbgUcOaxXU1u3pKjMsit9Ez1c_QQui3dvXrjvNILG2rITEqJJlRt0ytELlgrHfwsuH3CJkjHzdbtwGfZAcp8XpcEbXpgSoimMZG_xr7wQOZwg3_T7e0nQXazENehtRB5VZpLNKxjfxBHAjhykw_Ov6cjtNJv_w0QIHVUC_QsYZ4KuuE9nIVD0V2hQrBrpXuLXv8Riv7umFy2u96Dv9tx52eq3s" />
+                        <span class="ck-badge">Electronics</span>
                     </div>
-                    <div class="ck-card-meta">
-                        <span class="material-symbols-outlined fs-6">location_on</span>
-                        <span>Student Union, 1d ago</span>
+                    <div class="ck-card-body">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <h3 class="ck-card-title mb-0">Noise Canceling Headphones</h3>
+                            <span class="ck-card-price">PKR 12,000</span>
+                        </div>
+                        <div class="ck-card-meta">
+                            <span class="material-symbols-outlined fs-6">location_on</span>
+                            <span>Student Union, 1d ago</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        }
     </div>
 </section>
+
+@code {
+    private List<Listing> recentListings = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            recentListings = await DbContext.Listings
+                .OrderByDescending(l => l.DatePosted)
+                .Take(3)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading recent listings: {ex.Message}");
+        }
+    }
+}

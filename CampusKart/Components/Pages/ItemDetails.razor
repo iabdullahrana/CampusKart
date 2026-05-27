@@ -1,0 +1,253 @@
+@page "/listing/{Id:int}"
+@layout Layout.UserLayout
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using CampusKart.Data
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+
+<PageTitle>CampusKart | @(listing?.Title ?? "Item Details")</PageTitle>
+
+<main class="container py-5">
+    <!-- Breadcrumb / Back button -->
+    <div class="mb-4">
+        <a href="browse" class="text-ck-primary-container fw-semibold text-decoration-none d-inline-flex align-items-center gap-1 hover-underline">
+            <span class="material-symbols-outlined fs-5">arrow_back</span>
+            <span>Back to Browse</span>
+        </a>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex flex-column align-items-center justify-content-center py-5 my-5">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading details...</span>
+            </div>
+            <p class="text-muted mt-3">Loading listing details...</p>
+        </div>
+    }
+    else if (listing == null)
+    {
+        <div class="text-center py-5 my-5">
+            <span class="material-symbols-outlined text-danger" style="font-size: 80px; opacity: 0.2;">error</span>
+            <h3 class="fw-bold mt-3 text-ck-primary">Listing Not Found</h3>
+            <p class="text-ck-secondary">The listing you are looking for might have been sold, removed, or the link is broken.</p>
+            <a href="browse" class="btn btn-ck-primary mt-3">Go to Browse</a>
+        </div>
+    }
+    else
+    {
+        <!-- Main Product Section -->
+        <div class="row g-4 g-lg-5">
+            <!-- Left Column: Image Gallery -->
+            <div class="col-lg-7">
+                <div class="bg-white rounded-4 overflow-hidden border border-light aspect-[4/3] shadow-xs mb-3">
+                    <img alt="@listing.Title" class="w-100 h-100 object-fit-cover" src="@listing.ImageUrl" />
+                </div>
+                
+                <!-- Gallery Thumbnails (Aesthetic enhancement aligned with design guidelines) -->
+                <div class="row g-2">
+                    <div class="col-3">
+                        <div class="bg-white rounded-3 border border-primary p-0.5 overflow-hidden aspect-ratio-1x1 cursor-pointer position-relative" style="aspect-ratio: 1/1;">
+                            <img alt="Thumbnail 1" class="w-100 h-100 object-fit-cover rounded-2" src="@listing.ImageUrl" />
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="bg-white rounded-3 border border-light p-0.5 overflow-hidden aspect-ratio-1x1 cursor-pointer position-relative opacity-75 hover-opacity-100 transition" style="aspect-ratio: 1/1;">
+                            <img alt="Detail Closeup 1" class="w-100 h-100 object-fit-cover rounded-2" src="@listing.ImageUrl" style="filter: brightness(0.9) contrast(1.1);" />
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="bg-white rounded-3 border border-light p-0.5 overflow-hidden aspect-ratio-1x1 cursor-pointer position-relative opacity-75 hover-opacity-100 transition" style="aspect-ratio: 1/1;">
+                            <img alt="Detail Closeup 2" class="w-100 h-100 object-fit-cover rounded-2" src="@listing.ImageUrl" style="filter: grayscale(0.2) sepia(0.1);" />
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="bg-white rounded-3 border border-light p-0.5 overflow-hidden aspect-ratio-1x1 cursor-pointer position-relative opacity-60 hover-opacity-100 transition" style="aspect-ratio: 1/1;">
+                            <img alt="Detail Context" class="w-100 h-100 object-fit-cover rounded-2" src="@listing.ImageUrl" style="filter: blur(0.5px);" />
+                            <div class="position-absolute inset-0 bg-dark bg-opacity-10 d-flex align-items-center justify-content-center rounded-2">
+                                <span class="text-white fw-bold small">+2</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Details & Seller Info -->
+            <div class="col-lg-5 d-flex flex-column gap-4">
+                <!-- Badges, Title, and Price -->
+                <div class="d-flex flex-column gap-2">
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-20 px-3 py-2 rounded-pill fw-semibold">
+                            @listing.Condition
+                        </span>
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-20 px-3 py-2 rounded-pill fw-semibold">
+                            @listing.Category
+                        </span>
+                    </div>
+                    <h1 class="fw-bold text-ck-primary display-6 m-0 tracking-tight">@listing.Title</h1>
+                    <div class="fs-2 fw-bold text-ck-primary-container">PKR @listing.Price.ToString("N0")</div>
+                </div>
+
+                <!-- Description -->
+                <div class="d-flex flex-column gap-2">
+                    <h3 class="h5 fw-bold text-ck-primary mb-0">Description</h3>
+                    <p class="text-ck-secondary leading-relaxed m-0" style="white-space: pre-wrap;">
+                        @listing.Description
+                    </p>
+                </div>
+
+                <!-- Seller Card -->
+                <div class="bg-white border border-light rounded-4 p-4 shadow-sm">
+                    <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom border-light">
+                        <div class="d-flex align-items-center gap-3">
+                            <!-- Avatar Placeholder -->
+                            <div class="bg-ck-accent-section text-ck-primary-container rounded-circle d-flex align-items-center justify-content-center fw-bold text-uppercase fs-4" style="width: 48px; height: 48px;">
+                                @listing.SellerName.Substring(0, Math.Min(2, listing.SellerName.Length))
+                            </div>
+                            <div>
+                                <div class="fw-bold text-ck-primary">@listing.SellerName</div>
+                                <div class="d-flex align-items-center gap-1 text-ck-secondary small">
+                                    <span class="material-symbols-outlined text-warning fs-6">star</span>
+                                    <span class="fw-bold text-ck-primary">4.8</span>
+                                    <span>(Student Seller)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="badge bg-ck-accent-section text-ck-primary-container border-0 rounded-pill px-3 py-1.5 small fw-semibold">
+                            Active
+                        </span>
+                    </div>
+                    <a href="mailto:@listing.SellerEmail?subject=CampusKart Inquiry: @(Uri.EscapeDataString(listing.Title))" 
+                       class="btn btn-ck-primary w-100 py-3 d-flex align-items-center justify-content-center gap-2 text-decoration-none">
+                        <span class="material-symbols-outlined fs-5">mail</span>
+                        <span>Contact Seller</span>
+                    </a>
+                </div>
+
+                <!-- Pick-up Location Section -->
+                <div class="d-flex flex-column gap-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="h5 fw-bold text-ck-primary mb-0">Pick-up Location</h3>
+                        <div class="badge bg-ck-accent-section text-ck-primary-container px-3 py-1.5 rounded-pill border-0 fw-semibold">
+                            @listing.Location
+                        </div>
+                    </div>
+                    
+                    <!-- Stylized Static Map -->
+                    <div class="bg-ck-accent-section rounded-4 border border-light p-3 position-relative overflow-hidden" style="height: 180px;">
+                        <!-- Map Grid Pattern Background -->
+                        <div class="position-absolute inset-0 bg-white opacity-40" style="background-image: radial-gradient(var(--ck-primary-container) 0.5px, transparent 0.5px), radial-gradient(var(--ck-primary-container) 0.5px, #ffffff 0.5px); background-size: 20px 20px; background-position: 0 0, 10px 10px;"></div>
+                        
+                        <div class="position-absolute inset-0 d-flex flex-column align-items-center justify-content-center">
+                            <span class="material-symbols-outlined text-ck-primary-container fs-1 animate-bounce" style="font-variation-settings: 'FILL' 1;">location_on</span>
+                            <div class="bg-white border border-primary shadow-sm px-3 py-1.5 rounded-3 fw-bold small mt-2">
+                                @listing.Location Meeting Zone
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Report and Metadata -->
+                <div class="d-flex align-items-center justify-content-between pt-2 border-top border-light mt-auto">
+                    <div class="text-ck-secondary small">
+                        Posted @listing.DatePosted.ToString("MMMM dd, yyyy")
+                    </div>
+                    <a class="text-decoration-none text-danger small hover-underline d-flex align-items-center gap-1" href="mailto:support@campuskart.edu?subject=Report Listing @listing.Id">
+                        <span class="material-symbols-outlined fs-6">report</span>
+                        <span>Report Listing</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Similar Items (Extra Contextual Section) -->
+        <section class="mt-5 pt-5 border-top border-light">
+            <h3 class="h3 fw-bold text-ck-primary mb-4 tracking-tight">Similar Items for Sale</h3>
+            
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-4">
+                @if (similarListings.Any())
+                {
+                    @foreach (var item in similarListings)
+                    {
+                        <div class="col">
+                            <a href="listing/@item.Id" class="text-decoration-none text-dark d-block h-100">
+                                <div class="ck-card h-100">
+                                    <div class="ck-card-img-wrapper">
+                                        <img alt="@item.Title" class="ck-card-img" src="@item.ImageUrl" />
+                                        <span class="ck-badge">@item.Category</span>
+                                    </div>
+                                    <div class="ck-card-body d-flex flex-column h-100">
+                                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                            <h4 class="ck-card-title mb-0 text-truncate text-ck-primary" style="font-size: 16px; font-weight: 700;" title="@item.Title">
+                                                @item.Title
+                                            </h4>
+                                            <span class="bg-ck-accent-section text-ck-primary-container px-2 py-0.5 rounded text-uppercase" style="font-size: 9px; font-weight: 700;">
+                                                @item.Condition
+                                            </span>
+                                        </div>
+                                        <p class="ck-card-price mb-0 mt-auto fs-6">PKR @item.Price.ToString("N0")</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="col-12 text-center py-4 bg-ck-accent-section rounded-4">
+                        <p class="text-ck-secondary mb-0">No other similar listings found in this category.</p>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+</main>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Listing? listing;
+    private List<Listing> similarListings = new();
+    private bool isLoading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        try
+        {
+            listing = await DbContext.Listings.FirstOrDefaultAsync(l => l.Id == Id);
+            if (listing != null)
+            {
+                // Query similar listings in the same category
+                similarListings = await DbContext.Listings
+                    .Where(l => l.Category == listing.Category && l.Id != Id)
+                    .OrderByDescending(l => l.DatePosted)
+                    .Take(4)
+                    .ToListAsync();
+
+                // If fewer than 4 similar category listings, pad with general newest listings
+                if (similarListings.Count < 4)
+                {
+                    var excludedIds = similarListings.Select(s => s.Id).Concat(new[] { Id }).ToList();
+                    var padListings = await DbContext.Listings
+                        .Where(l => !excludedIds.Contains(l.Id))
+                        .OrderByDescending(l => l.DatePosted)
+                        .Take(4 - similarListings.Count)
+                        .ToListAsync();
+                    similarListings.AddRange(padListings);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading listing details: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

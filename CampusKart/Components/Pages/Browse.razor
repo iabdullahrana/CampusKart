@@ -121,29 +121,31 @@
             @foreach (var item in FilteredItems)
             {
                 <div class="col">
-                    <div class="ck-card h-100">
-                        <div class="ck-card-img-wrapper">
-                            <img class="ck-card-img" src="@item.ImageUrl" alt="@item.Title" />
-                            <span class="ck-badge">@item.Category</span>
-                        </div>
-                        <div class="ck-card-body d-flex flex-column h-100">
-                            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                                <h3 class="ck-card-title mb-0 text-truncate" title="@item.Title">@item.Title</h3>
-                                <span class="bg-ck-accent-section text-ck-primary-container px-2 py-0.5 rounded text-uppercase" style="font-size: 11px; font-weight: 700;">
-                                    @item.Condition
-                                </span>
+                    <a href="listing/@item.Id" class="text-decoration-none text-dark d-block h-100">
+                        <div class="ck-card h-100">
+                            <div class="ck-card-img-wrapper">
+                                <img class="ck-card-img" src="@item.ImageUrl" alt="@item.Title" />
+                                <span class="ck-badge">@item.Category</span>
                             </div>
-                            <p class="ck-card-price mb-3">@item.PriceFormatted</p>
-                            
-                            <div class="pt-2 mt-auto border-top border-light d-flex justify-content-between align-items-center">
-                                <span class="text-ck-secondary small fw-semibold">@item.SellerName</span>
-                                <div class="ck-card-meta small">
-                                    <span class="material-symbols-outlined fs-6" style="vertical-align: middle;">location_on</span>
-                                    <span>@item.Location</span>
+                            <div class="ck-card-body d-flex flex-column h-100">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                    <h3 class="ck-card-title mb-0 text-truncate text-ck-primary fw-bold" style="font-size: 18px;" title="@item.Title">@item.Title</h3>
+                                    <span class="bg-ck-accent-section text-ck-primary-container px-2 py-0.5 rounded text-uppercase" style="font-size: 11px; font-weight: 700;">
+                                        @item.Condition
+                                    </span>
+                                </div>
+                                <p class="ck-card-price mb-3">@item.PriceFormatted</p>
+                                
+                                <div class="pt-2 mt-auto border-top border-light d-flex justify-content-between align-items-center">
+                                    <span class="text-ck-secondary small fw-semibold">@item.SellerName</span>
+                                    <div class="ck-card-meta small">
+                                        <span class="material-symbols-outlined fs-6" style="vertical-align: middle;">location_on</span>
+                                        <span>@item.Location</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </a>
                 </div>
             }
         }
@@ -176,6 +178,7 @@
             var listings = await DbContext.Listings.OrderByDescending(l => l.DatePosted).ToListAsync();
             dbItems = listings.Select(l => new MarketplaceItem
             {
+                Id = l.Id,
                 Title = l.Title,
                 Category = l.Category,
                 Condition = l.Condition,
@@ -263,6 +266,7 @@
     // Mock Item Record representation
     public class MarketplaceItem
     {
+        public int Id { get; set; }
         public string Title { get; set; } = "";
         public string Category { get; set; } = "";
         public string Condition { get; set; } = "";
