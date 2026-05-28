@@ -102,12 +102,21 @@
                 <div class="bg-white border border-light rounded-4 p-4 shadow-sm">
                     <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom border-light">
                         <div class="d-flex align-items-center gap-3">
-                            <!-- Avatar Placeholder -->
-                            <div class="bg-ck-accent-section text-ck-primary-container rounded-circle d-flex align-items-center justify-content-center fw-bold text-uppercase fs-4" style="width: 48px; height: 48px;">
-                                @listing.SellerName.Substring(0, Math.Min(2, listing.SellerName.Length))
-                            </div>
+                            <!-- Avatar Placeholder / Seller Profile Picture -->
+                            @if (!string.IsNullOrEmpty(sellerUser?.ProfilePictureUrl))
+                            {
+                                <img src="@sellerUser.ProfilePictureUrl" alt="Seller Profile" class="rounded-circle border border-2 border-primary" style="width: 48px; height: 48px; object-fit: cover;" />
+                            }
+                            else
+                            {
+                                var displayName = sellerUser?.FullName ?? listing.SellerName;
+                                var initials = !string.IsNullOrEmpty(displayName) ? displayName.Substring(0, Math.Min(2, displayName.Length)) : "U";
+                                <div class="bg-ck-accent-section text-ck-primary-container rounded-circle d-flex align-items-center justify-content-center fw-bold text-uppercase fs-4" style="width: 48px; height: 48px;">
+                                    @initials
+                                </div>
+                            }
                             <div>
-                                <div class="fw-bold text-ck-primary">@listing.SellerName</div>
+                                <div class="fw-bold text-ck-primary">@(sellerUser?.FullName ?? listing.SellerName)</div>
                                 <div class="d-flex align-items-center gap-1 text-ck-secondary small">
                                     <span class="material-symbols-outlined text-warning fs-6">star</span>
                                     <span class="fw-bold text-ck-primary">4.8</span>
@@ -211,6 +220,7 @@
 
     private Listing? listing;
     private List<Listing> similarListings = new();
+    private ApplicationUser? sellerUser;
     private bool isLoading = true;
 
     protected override async Task OnParametersSetAsync()
@@ -221,6 +231,9 @@
             listing = await DbContext.Listings.FirstOrDefaultAsync(l => l.Id == Id);
             if (listing != null)
             {
+                // Fetch seller details from Identity DbContext using SellerEmail
+                sellerUser = await DbContext.Users.FirstOrDefaultAsync(u => u.Email == listing.SellerEmail);
+
                 // Query similar listings in the same category
                 similarListings = await DbContext.Listings
                     .Where(l => l.Category == listing.Category && l.Id != Id)
