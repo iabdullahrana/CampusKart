@@ -1,0 +1,221 @@
+@page "/seller/{Email}"
+@layout Layout.UserLayout
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using CampusKart.Data
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+
+<PageTitle>CampusKart | @(sellerDisplayName)'s Profile</PageTitle>
+
+<main class="container py-5">
+    <!-- Breadcrumb / Back button -->
+    <div class="mb-4">
+        <a href="browse" class="text-ck-primary-container fw-semibold text-decoration-none d-inline-flex align-items-center gap-1 hover-underline">
+            <span class="material-symbols-outlined fs-5">arrow_back</span>
+            <span>Back to Browse</span>
+        </a>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex flex-column align-items-center justify-content-center py-5 my-5">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading profile...</span>
+            </div>
+            <p class="text-muted mt-3">Loading seller profile...</p>
+        </div>
+    }
+    else
+    {
+        <!-- Seller Profile Banner (Expanded Card) -->
+        <div class="bg-white border border-light rounded-4 p-4 p-md-5 shadow-sm mb-5">
+            <div class="row align-items-center g-4">
+                <!-- Avatar column -->
+                <div class="col-md-auto text-center text-md-start">
+                    @if (!string.IsNullOrEmpty(sellerUser?.ProfilePictureUrl))
+                    {
+                        <img src="@sellerUser.ProfilePictureUrl" alt="Seller Profile Large" class="rounded-circle border border-4 border-primary shadow-sm" style="width: 110px; height: 110px; object-fit: cover;" />
+                    }
+                    else
+                    {
+                        var initials = !string.IsNullOrEmpty(sellerDisplayName) ? sellerDisplayName.Substring(0, Math.Min(2, sellerDisplayName.Length)).ToUpper() : "U";
+                        <div class="rounded-circle bg-ck-primary-container text-white d-flex align-items-center justify-content-center fw-bold shadow-sm mx-auto mx-md-0" style="width: 110px; height: 110px; font-size: 42px;">
+                            @initials
+                        </div>
+                    }
+                </div>
+                
+                <!-- Profile Details column -->
+                <div class="col-md text-center text-md-start">
+                    <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-start gap-2 mb-2">
+                        <h1 class="fw-bold text-ck-primary m-0" style="font-size: 28px;">@sellerDisplayName</h1>
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-20 px-3 py-1.5 rounded-pill fw-semibold small">
+                            Verified Student Seller
+                        </span>
+                    </div>
+                    <p class="text-ck-secondary mb-3 fw-medium d-flex align-items-center justify-content-center justify-content-md-start gap-2">
+                        <span class="material-symbols-outlined fs-5 text-secondary">mail</span>
+                        <a href="mailto:@Email?subject=CampusKart Inquiry" class="text-decoration-none text-ck-secondary hover-underline">@Email</a>
+                    </p>
+                    
+                    <!-- Star Rating and Quick stats -->
+                    <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-start gap-4 text-ck-secondary small">
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="material-symbols-outlined text-warning fs-5">star</span>
+                            <span class="fw-bold text-ck-primary">4.8</span>
+                            <span>(12 student ratings)</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="material-symbols-outlined text-ck-primary-container fs-5">location_on</span>
+                            <span>Preferred: <strong class="text-ck-primary">@preferredLocation</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <hr class="my-4" style="border-top: 1px solid var(--ck-border-light);" />
+            
+            <!-- Dynamic KPI Metrics Rows -->
+            <div class="row g-3 text-center">
+                <div class="col-6 col-md-3">
+                    <div class="bg-ck-accent-section rounded-3 p-3">
+                        <div class="fs-3 fw-bold text-ck-primary-container">@sellerListings.Count</div>
+                        <div class="text-ck-secondary small fw-semibold">Active Listings</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="bg-ck-accent-section rounded-3 p-3">
+                        <div class="fs-3 fw-bold text-success">100%</div>
+                        <div class="text-ck-secondary small fw-semibold">Response Rate</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="bg-ck-accent-section rounded-3 p-3">
+                        <div class="fs-3 fw-bold text-ck-primary-container">96%</div>
+                        <div class="text-ck-secondary small fw-semibold">Positive Feedback</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="bg-ck-accent-section rounded-3 p-3">
+                        <div class="fs-3 fw-bold text-ck-primary-container"><span class="material-symbols-outlined align-middle fs-3">history</span></div>
+                        <div class="text-ck-secondary small fw-semibold">Joined May 2026</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Listings Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-light pb-2">
+            <h2 class="h3 fw-bold text-ck-primary mb-0" style="font-weight: 700;">Active Listings by this Seller</h2>
+            <span class="badge bg-ck-accent-section text-ck-primary-container rounded-pill border-0 px-3 py-2 fw-semibold">
+                @sellerListings.Count Items
+            </span>
+        </div>
+
+        <!-- Listings Grid -->
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
+            @if (sellerListings.Any())
+            {
+                @foreach (var item in sellerListings)
+                {
+                    <div class="col">
+                        <a href="listing/@item.Id" class="text-decoration-none text-dark d-block h-100">
+                            <div class="ck-card h-100">
+                                <div class="ck-card-img-wrapper">
+                                    <img class="ck-card-img" src="@item.ImageUrl" alt="@item.Title" />
+                                    <span class="ck-badge">@item.Category</span>
+                                </div>
+                                <div class="ck-card-body d-flex flex-column h-100">
+                                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                        <h3 class="ck-card-title mb-0 text-truncate text-ck-primary fw-bold" style="font-size: 18px;" title="@item.Title">
+                                            @item.Title
+                                        </h3>
+                                        <span class="bg-ck-accent-section text-ck-primary-container px-2 py-0.5 rounded text-uppercase" style="font-size: 11px; font-weight: 700;">
+                                            @item.Condition
+                                        </span>
+                                    </div>
+                                    <p class="ck-card-price mb-3">PKR @item.Price.ToString("N0")</p>
+                                    
+                                    <div class="pt-2 mt-auto border-top border-light d-flex justify-content-between align-items-center">
+                                        <span class="text-ck-secondary small fw-semibold">@item.SellerName</span>
+                                        <div class="ck-card-meta small">
+                                            <span class="material-symbols-outlined fs-6" style="vertical-align: middle;">location_on</span>
+                                            <span>@item.Location</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="col-12 text-center py-5 bg-white border border-light rounded-4">
+                    <span class="material-symbols-outlined text-slate-300 fs-1 mb-3" style="font-size: 72px;">drafts</span>
+                    <h4 class="fw-bold text-ck-primary">No Active Listings</h4>
+                    <p class="text-ck-secondary small">This seller doesn't have any items currently listed for sale.</p>
+                </div>
+            }
+        </div>
+    }
+</main>
+
+@code {
+    [Parameter]
+    public string Email { get; set; } = "";
+
+    private ApplicationUser? sellerUser;
+    private List<Listing> sellerListings = new();
+    private string sellerDisplayName = "";
+    private string preferredLocation = "Main Campus Library";
+    private bool isLoading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        try
+        {
+            // Fetch seller details from identity user store matching the email parameter
+            sellerUser = await DbContext.Users.FirstOrDefaultAsync(u => u.Email == Email);
+            
+            // Query listings by this seller email address
+            sellerListings = await DbContext.Listings
+                .Where(l => l.SellerEmail == Email)
+                .OrderByDescending(l => l.DatePosted)
+                .ToListAsync();
+
+            // Set up clean display name
+            if (sellerUser != null && !string.IsNullOrEmpty(sellerUser.FullName))
+            {
+                sellerDisplayName = sellerUser.FullName;
+            }
+            else if (sellerListings.Any())
+            {
+                sellerDisplayName = sellerListings.First().SellerName;
+            }
+            else
+            {
+                // Fallback to name parsed from email
+                var parts = Email.Split('@');
+                sellerDisplayName = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(parts[0].Replace(".", " "));
+            }
+
+            // Set up clean preferred meeting location
+            if (sellerListings.Any())
+            {
+                preferredLocation = sellerListings.First().Location;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading seller profile: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

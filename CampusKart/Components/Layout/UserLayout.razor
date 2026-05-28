@@ -11,12 +11,14 @@
                 
                 <!-- Desktop Links -->
                 <div class="d-none d-md-flex align-items-center gap-4">
+                    <a class="@GetNavLinkClass("")" href="">Home</a>
                     <a class="@GetNavLinkClass("browse")" href="browse">Browse</a>
                     <a class="@GetNavLinkClass("sell")" href="sell">Sell</a>
                     
                     <AuthorizeView>
                         <Authorized>
-                            <a class="nav-link text-ck-secondary fw-semibold hover-primary" href="#">Your Listings</a>
+                            <a class="nav-link text-ck-secondary fw-semibold hover-primary" href="#">Messages</a>
+                            <a class="nav-link text-ck-secondary fw-semibold hover-primary" href="#">Your Listing</a>
                             
                             <!-- Classical Profile Circle & Dropdown Popup (Pure CSS for Static SSR) -->
                             <div class="position-relative">
@@ -81,12 +83,14 @@
             @if (isMobileMenuOpen)
             {
                 <div class="d-md-none mt-3 pb-2 d-flex flex-column gap-2 animate-fade-in">
+                    <a class="@GetMobileNavLinkClass("")" href="" @onclick="ToggleMobileMenu">Home</a>
                     <a class="@GetMobileNavLinkClass("browse")" href="browse" @onclick="ToggleMobileMenu">Browse</a>
                     <a class="@GetMobileNavLinkClass("sell")" href="sell" @onclick="ToggleMobileMenu">Sell</a>
                     
                     <AuthorizeView>
                         <Authorized>
-                            <a class="nav-link text-ck-secondary fw-semibold py-2 border-bottom" href="#" @onclick="ToggleMobileMenu">Your Listings</a>
+                            <a class="nav-link text-ck-secondary fw-semibold py-2 border-bottom" href="#" @onclick="ToggleMobileMenu">Messages</a>
+                            <a class="nav-link text-ck-secondary fw-semibold py-2 border-bottom" href="#" @onclick="ToggleMobileMenu">Your Listing</a>
                             
                             <!-- Mobile Profile Summary with Logout POST -->
                             <div class="bg-ck-accent-section p-3 rounded-3 mt-2 d-flex flex-column gap-3">
@@ -204,8 +208,16 @@
 
     private string GetNavLinkClass(string path)
     {
-        bool isActive = currentUrl.StartsWith(path, StringComparison.OrdinalIgnoreCase) || 
+        bool isActive = false;
+        if (string.IsNullOrEmpty(path))
+        {
+            isActive = string.IsNullOrEmpty(currentUrl);
+        }
+        else
+        {
+            isActive = currentUrl.StartsWith(path, StringComparison.OrdinalIgnoreCase) || 
                        (path == "browse" && currentUrl.StartsWith("listing", StringComparison.OrdinalIgnoreCase));
+        }
         
         return isActive 
             ? "nav-link text-ck-primary-container fw-bold border-bottom border-2 border-primary pb-1" 
@@ -214,8 +226,16 @@
 
     private string GetMobileNavLinkClass(string path)
     {
-        bool isActive = currentUrl.StartsWith(path, StringComparison.OrdinalIgnoreCase) || 
+        bool isActive = false;
+        if (string.IsNullOrEmpty(path))
+        {
+            isActive = string.IsNullOrEmpty(currentUrl);
+        }
+        else
+        {
+            isActive = currentUrl.StartsWith(path, StringComparison.OrdinalIgnoreCase) || 
                        (path == "browse" && currentUrl.StartsWith("listing", StringComparison.OrdinalIgnoreCase));
+        }
         
         return isActive 
             ? "nav-link text-ck-primary-container fw-bold py-2 border-bottom" 

@@ -101,7 +101,7 @@
                 <!-- Seller Card -->
                 <div class="bg-white border border-light rounded-4 p-4 shadow-sm">
                     <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom border-light">
-                        <div class="d-flex align-items-center gap-3">
+                        <a href="seller/@listing.SellerEmail" class="d-flex align-items-center gap-3 text-decoration-none">
                             <!-- Avatar Placeholder / Seller Profile Picture -->
                             @if (!string.IsNullOrEmpty(sellerUser?.ProfilePictureUrl))
                             {
@@ -116,14 +116,14 @@
                                 </div>
                             }
                             <div>
-                                <div class="fw-bold text-ck-primary">@(sellerUser?.FullName ?? listing.SellerName)</div>
+                                <div class="fw-bold text-ck-primary hover-underline">@(sellerUser?.FullName ?? listing.SellerName)</div>
                                 <div class="d-flex align-items-center gap-1 text-ck-secondary small">
                                     <span class="material-symbols-outlined text-warning fs-6">star</span>
                                     <span class="fw-bold text-ck-primary">4.8</span>
                                     <span>(Student Seller)</span>
                                 </div>
                             </div>
-                        </div>
+                        </a>
                         <span class="badge bg-ck-accent-section text-ck-primary-container border-0 rounded-pill px-3 py-1.5 small fw-semibold">
                             Active
                         </span>
