@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using CampusKart.Client;
+using CampusKart.Data;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
@@ -15,6 +16,7 @@ namespace CampusKart.Components.Account
     {
         private readonly PersistentComponentState state;
         private readonly IdentityOptions options;
+        private readonly UserManager<ApplicationUser> userManager;
 
         private readonly PersistingComponentStateSubscription subscription;
 
@@ -22,10 +24,12 @@ namespace CampusKart.Components.Account
 
         public PersistingServerAuthenticationStateProvider(
             PersistentComponentState persistentComponentState,
-            IOptions<IdentityOptions> optionsAccessor)
+            IOptions<IdentityOptions> optionsAccessor,
+            UserManager<ApplicationUser> userManager)
         {
             state = persistentComponentState;
             options = optionsAccessor.Value;
+            this.userManager = userManager;
 
             AuthenticationStateChanged += OnAuthenticationStateChanged;
             subscription = state.RegisterOnPersisting(OnPersistingAsync, RenderMode.InteractiveWebAssembly);
@@ -53,10 +57,13 @@ namespace CampusKart.Components.Account
 
                 if (userId != null && email != null)
                 {
+                    var userModel = await userManager.FindByIdAsync(userId);
                     state.PersistAsJson(nameof(UserInfo), new UserInfo
                     {
                         UserId = userId,
                         Email = email,
+                        FullName = userModel?.FullName,
+                        ProfilePictureUrl = userModel?.ProfilePictureUrl
                     });
                 }
             }

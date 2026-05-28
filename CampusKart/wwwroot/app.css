@@ -234,3 +234,11 @@ h1:focus {
     from { opacity: 0; transform: translateY(-8px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* Pure CSS Profile Dropdown Toggle for Static SSR */
+#profile-toggle ~ .profile-menu {
+    display: none !important;
+}
+#profile-toggle:checked ~ .profile-menu {
+    display: block !important;
+}

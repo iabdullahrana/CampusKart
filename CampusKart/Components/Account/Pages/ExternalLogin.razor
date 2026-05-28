@@ -253,6 +253,28 @@
             return;
         }
 
+        // Diagnostic claims dump
+        Logger.LogInformation("=== Google External Login Claims Dump ===");
+        foreach (var claim in externalLoginInfo.Principal.Claims)
+        {
+            Logger.LogInformation("Google Claim: {Type} = {Value}", claim.Type, claim.Value);
+        }
+
+        // Sync user's profile name and picture from Google claims to the database BEFORE signing in,
+        // so that the generated cookie immediately contains the correct custom claims!
+        var existingUser = await UserManager.FindByEmailAsync(_googleEmail);
+        if (existingUser is not null)
+        {
+            var fullName = externalLoginInfo.Principal.FindFirstValue(ClaimTypes.Name);
+            var pictureUrl = externalLoginInfo.Principal.FindFirstValue("picture");
+            if (existingUser.FullName != fullName || existingUser.ProfilePictureUrl != pictureUrl)
+            {
+                existingUser.FullName = fullName;
+                existingUser.ProfilePictureUrl = pictureUrl;
+                await UserManager.UpdateAsync(existingUser);
+            }
+        }
+
         // Try to sign in the user with this external login provider
         var result = await SignInManager.ExternalLoginSignInAsync(
             externalLoginInfo.LoginProvider,
@@ -272,7 +294,7 @@
         else
         {
             // Crucial Security/UX Fix: First check if a local user profile already exists with this exact email!
-            var existingUser = await UserManager.FindByEmailAsync(_googleEmail);
+            existingUser = await UserManager.FindByEmailAsync(_googleEmail);
             if (existingUser is not null)
             {
                 Logger.LogInformation("Connecting existing account for email '{Email}' with Google External Login.", _googleEmail);
@@ -303,6 +325,10 @@
 
             await UserStore.SetUserNameAsync(user, _googleEmail, CancellationToken.None);
             await emailStore.SetEmailAsync(user, _googleEmail, CancellationToken.None);
+
+            // Populate Google profile details
+            user.FullName = externalLoginInfo.Principal.FindFirstValue(ClaimTypes.Name);
+            user.ProfilePictureUrl = externalLoginInfo.Principal.FindFirstValue("picture");
 
             var createResult = await UserManager.CreateAsync(user);
             if (createResult.Succeeded)
@@ -369,6 +395,10 @@
 
             await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
             await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+
+            // Populate Google profile details
+            user.FullName = externalLoginInfo.Principal.FindFirstValue(ClaimTypes.Name);
+            user.ProfilePictureUrl = externalLoginInfo.Principal.FindFirstValue("picture");
 
             var result = await UserManager.CreateAsync(user);
             if (result.Succeeded)

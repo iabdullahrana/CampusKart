@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject NavigationManager Navigation
+@using System.Security.Claims
 
 <div class="d-flex flex-column min-vh-100">
     <header class="bg-white border-bottom border-light sticky-top py-3">
@@ -12,8 +13,62 @@
                 <div class="d-none d-md-flex align-items-center gap-4">
                     <a class="@GetNavLinkClass("browse")" href="browse">Browse</a>
                     <a class="@GetNavLinkClass("sell")" href="sell">Sell</a>
-                    <a class="@GetNavLinkClass("login")" href="login">Login</a>
-                    <a class="btn-ck-primary" style="text-decoration:none;" href="#">Register</a>
+                    
+                    <AuthorizeView>
+                        <Authorized>
+                            <a class="nav-link text-ck-secondary fw-semibold hover-primary" href="#">Your Listings</a>
+                            
+                            <!-- Classical Profile Circle & Dropdown Popup (Pure CSS for Static SSR) -->
+                            <div class="position-relative">
+                                <label class="btn p-0 border-0 d-flex align-items-center cursor-pointer animate-fade-in" for="profile-toggle" aria-label="User Profile">
+                                    @if (!string.IsNullOrEmpty(profilePictureUrl))
+                                    {
+                                        <img src="@profilePictureUrl" alt="User Profile" class="rounded-circle border border-2 border-primary" style="width: 38px; height: 38px; object-fit: cover;" />
+                                    }
+                                    else
+                                    {
+                                        <div class="rounded-circle bg-ck-primary-container text-white d-flex align-items-center justify-content-center fw-bold" style="width: 38px; height: 38px; font-size: 16px;">
+                                            @(!string.IsNullOrEmpty(fullName) ? fullName.Substring(0, 1).ToUpper() : "U")
+                                        </div>
+                                    }
+                                </label>
+                                <input type="checkbox" id="profile-toggle" class="d-none profile-checkbox-toggle" />
+
+                                <!-- Classical Dropdown Card Popup -->
+                                <div class="profile-menu position-absolute end-0 mt-3 bg-white border border-light rounded-4 p-4 shadow-lg animate-fade-in" style="width: 290px; z-index: 1050; border: 1px solid var(--ck-border-light) !important;">
+                                    <div class="d-flex flex-column align-items-center text-center mb-3">
+                                        @if (!string.IsNullOrEmpty(profilePictureUrl))
+                                        {
+                                            <img src="@profilePictureUrl" alt="User Profile Large" class="rounded-circle border border-3 border-light shadow-sm mb-2" style="width: 80px; height: 80px; object-fit: cover;" />
+                                        }
+                                        else
+                                        {
+                                            <div class="rounded-circle bg-ck-primary-container text-white d-flex align-items-center justify-content-center fw-bold shadow-sm mb-2" style="width: 80px; height: 80px; font-size: 32px;">
+                                                @(!string.IsNullOrEmpty(fullName) ? fullName.Substring(0, 1).ToUpper() : "U")
+                                            </div>
+                                        }
+                                        <h5 class="fw-bold text-ck-primary mb-1" style="font-size: 16px;">@fullName</h5>
+                                        <p class="text-ck-secondary small mb-0" style="font-size: 13px; font-weight: 500;">@emailAddress</p>
+                                    </div>
+                                    
+                                    <hr class="my-3" style="border-top: 1px solid var(--ck-border-light);" />
+                                    
+                                    <form action="Account/Logout" method="post" class="m-0">
+                                        <AntiforgeryToken />
+                                        <input type="hidden" name="returnUrl" value="" />
+                                        <button type="submit" class="btn btn-ck-primary w-100 py-2.5 rounded-3 fw-bold d-flex align-items-center justify-content-center gap-2" style="background-color: #dc3545 !important;">
+                                            <span class="material-symbols-outlined fs-5">logout</span>
+                                            <span>Log Out</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </Authorized>
+                        <NotAuthorized>
+                            <a class="@GetNavLinkClass("login")" href="login">Login</a>
+                            <a class="btn-ck-primary text-decoration-none" href="#">Register</a>
+                        </NotAuthorized>
+                    </AuthorizeView>
                 </div>
 
                 <!-- Mobile Menu Button -->
@@ -28,8 +83,44 @@
                 <div class="d-md-none mt-3 pb-2 d-flex flex-column gap-2 animate-fade-in">
                     <a class="@GetMobileNavLinkClass("browse")" href="browse" @onclick="ToggleMobileMenu">Browse</a>
                     <a class="@GetMobileNavLinkClass("sell")" href="sell" @onclick="ToggleMobileMenu">Sell</a>
-                    <a class="@GetMobileNavLinkClass("login")" href="login" @onclick="ToggleMobileMenu">Login</a>
-                    <a class="btn btn-ck-primary text-center mt-2" href="#" @onclick="ToggleMobileMenu">Register</a>
+                    
+                    <AuthorizeView>
+                        <Authorized>
+                            <a class="nav-link text-ck-secondary fw-semibold py-2 border-bottom" href="#" @onclick="ToggleMobileMenu">Your Listings</a>
+                            
+                            <!-- Mobile Profile Summary with Logout POST -->
+                            <div class="bg-ck-accent-section p-3 rounded-3 mt-2 d-flex flex-column gap-3">
+                                <div class="d-flex align-items-center gap-3">
+                                    @if (!string.IsNullOrEmpty(profilePictureUrl))
+                                    {
+                                        <img src="@profilePictureUrl" alt="User Profile Mobile" class="rounded-circle border border-2 border-primary" style="width: 48px; height: 48px; object-fit: cover;" />
+                                    }
+                                    else
+                                    {
+                                        <div class="rounded-circle bg-ck-primary-container text-white d-flex align-items-center justify-content-center fw-bold" style="width: 48px; height: 48px; font-size: 20px;">
+                                            @(!string.IsNullOrEmpty(fullName) ? fullName.Substring(0, 1).ToUpper() : "U")
+                                        </div>
+                                    }
+                                    <div class="text-start">
+                                        <div class="fw-bold text-ck-primary" style="font-size: 14px;">@fullName</div>
+                                        <div class="text-ck-secondary small" style="font-size: 12px;">@emailAddress</div>
+                                    </div>
+                                </div>
+                                <form action="Account/Logout" method="post" class="m-0 w-100">
+                                    <AntiforgeryToken />
+                                    <input type="hidden" name="returnUrl" value="" />
+                                    <button type="submit" class="btn btn-ck-primary w-100 py-2.5 rounded-3 fw-bold d-flex align-items-center justify-content-center gap-2" style="background-color: #dc3545 !important;" @onclick="ToggleMobileMenu">
+                                        <span class="material-symbols-outlined fs-5">logout</span>
+                                        <span>Log Out</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </Authorized>
+                        <NotAuthorized>
+                            <a class="@GetMobileNavLinkClass("login")" href="login" @onclick="ToggleMobileMenu">Login</a>
+                            <a class="btn btn-ck-primary text-center mt-2" href="#" @onclick="ToggleMobileMenu">Register</a>
+                        </NotAuthorized>
+                    </AuthorizeView>
                 </div>
             }
         </nav>
@@ -62,12 +153,32 @@
 
 @code {
     private bool isMobileMenuOpen = false;
+    private bool isProfileMenuOpen = false;
     private string currentUrl = "";
 
-    protected override void OnInitialized()
+    private string? profilePictureUrl;
+    private string? fullName;
+    private string? emailAddress;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? GetAuthenticationStateAsync { get; set; }
+
+    protected override async Task OnInitializedAsync()
     {
         currentUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
         Navigation.LocationChanged += OnLocationChanged;
+
+        if (GetAuthenticationStateAsync != null)
+        {
+            var authState = await GetAuthenticationStateAsync;
+            var user = authState.User;
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                fullName = user.Identity.Name;
+                emailAddress = user.FindFirst(ClaimTypes.Email)?.Value;
+                profilePictureUrl = user.FindFirst("picture")?.Value;
+            }
+        }
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -84,6 +195,11 @@
     private void ToggleMobileMenu()
     {
         isMobileMenuOpen = !isMobileMenuOpen;
+    }
+
+    private void ToggleProfileMenu()
+    {
+        isProfileMenuOpen = !isProfileMenuOpen;
     }
 
     private string GetNavLinkClass(string path)
@@ -106,4 +222,5 @@
             : "nav-link text-ck-secondary fw-semibold py-2 border-bottom hover-primary";
     }
 }
+
 

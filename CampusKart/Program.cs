@@ -5,6 +5,7 @@ using CampusKart.Data;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication;
 
 namespace CampusKart
 {
@@ -36,6 +37,8 @@ namespace CampusKart
                 {
                     options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "";
                     options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
+                    options.ClaimActions.MapJsonKey(System.Security.Claims.ClaimTypes.Name, "name");
+                    options.ClaimActions.MapJsonKey("picture", "picture");
                     options.Events.OnTicketReceived = context =>
                     {
                         var principal = context.Principal;
@@ -60,6 +63,8 @@ namespace CampusKart
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddSignInManager()
                 .AddDefaultTokenProviders();
+
+            builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, CustomUserClaimsPrincipalFactory>();
 
             builder.Services.ConfigureApplicationCookie(options =>
             {
