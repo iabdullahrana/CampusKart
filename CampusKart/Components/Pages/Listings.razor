@@ -1,0 +1,242 @@
+@page "/listings"
+@layout Layout.UserLayout
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@using CampusKart.Data
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+
+<PageTitle>CampusKart | Your Listings</PageTitle>
+
+<main class="container py-5">
+    <!-- Title and Post New Button -->
+    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-end gap-3 mb-5">
+        <div>
+            <h1 class="fw-bold text-ck-primary tracking-tight m-0" style="font-size: 36px;">Your Listings</h1>
+            <p class="text-ck-secondary m-0 mt-1">Manage and track your posted marketplace items</p>
+        </div>
+        <a href="sell" class="btn btn-ck-primary px-4 py-2.5 rounded-3 fw-bold d-inline-flex align-items-center gap-2 text-decoration-none shadow-sm transition-all" style="background-color: #0056B3 !important; border-color: #0056B3 !important; color: white !important;">
+            <span class="material-symbols-outlined fs-5">add</span>
+            <span>Post New Item</span>
+        </a>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex flex-column align-items-center justify-content-center py-5 my-5">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading listings...</span>
+            </div>
+            <p class="text-muted mt-3">Loading your listings...</p>
+        </div>
+    }
+    else
+    {
+        <!-- Listings Cards List -->
+        <div class="position-relative">
+            @if (userListings.Any())
+            {
+                <div class="d-flex flex-column gap-3">
+                    @foreach (var item in userListings)
+                    {
+                        var isCurrentItemDeleting = (confirmDeleteId == item.Id);
+                        
+                        <div class="bg-white border rounded-4 p-4 shadow-sm transition-all @(isCurrentItemDeleting ? "opacity-50" : "")" style="border-color: #e4e2e1 !important; border-radius: 1rem !important;">
+                            <div class="row align-items-center g-4">
+                                <!-- Image column -->
+                                <div class="col-sm-auto text-center">
+                                    <div class="rounded-3 bg-ck-accent-section d-flex align-items-center justify-content-center overflow-hidden mx-auto" style="width: 110px; height: 110px; background-color: #f6f3f2; border-radius: 0.5rem !important;">
+                                        @if (!string.IsNullOrEmpty(item.ImageUrl))
+                                        {
+                                            var firstUrl = item.ImageUrl.Contains(";") ? item.ImageUrl.Split(';')[0] : item.ImageUrl;
+                                            <img src="@firstUrl" alt="@item.Title" class="w-100 h-100" style="object-fit: cover;" />
+                                        }
+                                        else
+                                        {
+                                            <span class="material-symbols-outlined text-secondary fs-1" style="font-size: 48px;">image</span>
+                                        }
+                                    </div>
+                                </div>
+                                
+                                <!-- Content Details column -->
+                                <div class="col-sm text-center text-sm-start">
+                                    <h3 class="fw-bold text-ck-primary m-0" style="font-size: 20px; color: #003f87;">@item.Title</h3>
+                                    
+                                    <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-sm-start gap-3 mt-2 small">
+                                        <span class="badge px-2.5 py-1.5 rounded fw-bold text-uppercase border-0" style="background-color: #dfe0e0; color: #616363; border-radius: 0.25rem !important;">
+                                            @item.Category
+                                        </span>
+                                        <span class="fw-bold fs-6" style="color: #0056b3;">
+                                            PKR @item.Price.ToString("N0")
+                                        </span>
+                                        <span class="badge px-2.5 py-1.5 rounded text-uppercase border" style="background-color: #fbf9f8; color: #acc7ff; border-color: #c2c6d4 !important; font-size: 11px; font-weight: 700; border-radius: 0.25rem !important;">
+                                            @item.Condition
+                                        </span>
+                                    </div>
+                                    <p class="text-ck-secondary small mb-0 mt-3 fw-medium d-flex align-items-center justify-content-center justify-content-sm-start gap-1" style="color: #5d5f5f;">
+                                        <span class="material-symbols-outlined fs-6 align-middle text-secondary">calendar_today</span>
+                                        <span>Posted @GetRelativeTime(item.DatePosted)</span>
+                                    </p>
+                                </div>
+                                
+                                <!-- Status Badge and Actions column -->
+                                <div class="col-md-auto text-center text-md-end">
+                                    <div class="d-flex flex-wrap flex-md-column align-items-center justify-content-center justify-content-md-end gap-2">
+                                        <!-- Active Status Badge -->
+                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-20 px-3 py-1.5 rounded-pill fw-semibold mb-md-2" style="border-radius: 9999px !important;">
+                                            Active
+                                        </span>
+
+                                        <!-- Actions -->
+                                        <div class="d-flex gap-2">
+                                            <a href="listing/@item.Id" class="btn btn-outline-primary px-3 py-2 rounded-3 fw-bold small d-inline-flex align-items-center gap-1" style="border-radius: 0.5rem !important; border-color: #0056b3 !important; color: #0056b3 !important;">
+                                                <span class="material-symbols-outlined fs-6">visibility</span>
+                                                <span>View</span>
+                                            </a>
+                                            <button class="btn btn-outline-danger px-3 py-2 rounded-3 fw-bold small d-inline-flex align-items-center gap-1" style="border-radius: 0.5rem !important; border-color: #ba1a1a !important; color: #ba1a1a !important;" @onclick="() => PromptDelete(item.Id)">
+                                                <span class="material-symbols-outlined fs-6">delete</span>
+                                                <span>Delete</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5 bg-white border rounded-4 my-4 shadow-sm" style="border-color: #e4e2e1 !important; border-radius: 1rem !important;">
+                    <span class="material-symbols-outlined text-secondary fs-1 mb-3" style="font-size: 64px; color: #c6c6c7 !important;">drafts</span>
+                    <h4 class="fw-bold text-ck-primary" style="color: #003f87;">No Listings Found</h4>
+                    <p class="text-ck-secondary small" style="color: #5d5f5f;">You don't have any items currently listed for sale.</p>
+                    <a href="sell" class="btn btn-ck-primary px-4 py-2 mt-2 rounded-3 fw-bold text-decoration-none" style="background-color: #0056B3 !important; border-color: #0056B3 !important; color: white !important;">
+                        Post Your First Item
+                    </a>
+                </div>
+            }
+
+            <!-- Delete Confirmation Modal Overlay -->
+            @if (confirmDeleteId.HasValue)
+            {
+                <div class="position-fixed d-flex align-items-center justify-content-center" style="background-color: rgba(0,0,0,0.5); top: 0; left: 0; right: 0; bottom: 0; z-index: 1060;">
+                    <div class="bg-white border rounded-4 shadow-lg p-4 mx-3 animate-fade-in" style="width: 100%; max-width: 400px; border-color: #e4e2e1 !important; border-radius: 1rem !important;">
+                        <div class="text-center mb-3">
+                            <span class="material-symbols-outlined text-danger" style="font-size: 48px; color: #ba1a1a !important;">warning</span>
+                            <h4 class="fw-bold text-ck-primary mt-2" style="color: #003f87;">Delete Listing?</h4>
+                            <p class="text-ck-secondary small mt-2" style="color: #5d5f5f;">
+                                Are you sure you want to delete this listing?<br />
+                                This action cannot be undone and will permanently remove this item from the store.
+                            </p>
+                        </div>
+                        <div class="d-flex gap-3 mt-4">
+                            <button class="btn btn-danger flex-grow-1 py-2.5 rounded-3 fw-bold" style="background-color: #ba1a1a !important; border-color: #ba1a1a !important; color: white !important; border-radius: 0.5rem !important;" @onclick="DeleteListing">
+                                Yes, Delete
+                            </button>
+                            <button class="btn btn-light flex-grow-1 py-2.5 border rounded-3 fw-bold text-secondary" style="border-radius: 0.5rem !important;" @onclick="CancelDelete">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</main>
+
+@code {
+    private List<Listing> userListings = new();
+    private bool isLoading = true;
+    private int? confirmDeleteId;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? GetAuthenticationStateAsync { get; set; }
+    private string? currentUserEmail;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        try
+        {
+            if (GetAuthenticationStateAsync != null)
+            {
+                var authState = await GetAuthenticationStateAsync;
+                var user = authState.User;
+                if (user.Identity?.IsAuthenticated == true)
+                {
+                    currentUserEmail = user.FindFirst(ClaimTypes.Email)?.Value;
+                }
+            }
+
+            await LoadListings();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading user listings: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadListings()
+    {
+        if (string.IsNullOrEmpty(currentUserEmail)) return;
+
+        // Fetch all listings belonging to the currently logged-in seller
+        userListings = await DbContext.Listings
+            .Where(l => l.SellerEmail == currentUserEmail)
+            .OrderByDescending(l => l.DatePosted)
+            .ToListAsync();
+    }
+
+    private void PromptDelete(int id)
+    {
+        confirmDeleteId = id;
+    }
+
+    private void CancelDelete()
+    {
+        confirmDeleteId = null;
+    }
+
+    private async Task DeleteListing()
+    {
+        if (!confirmDeleteId.HasValue) return;
+
+        try
+        {
+            var item = await DbContext.Listings.FindAsync(confirmDeleteId.Value);
+            if (item != null)
+            {
+                DbContext.Listings.Remove(item);
+                await DbContext.SaveChangesAsync();
+                await LoadListings();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting listing: {ex.Message}");
+        }
+        finally
+        {
+            confirmDeleteId = null;
+        }
+    }
+
+    private string GetRelativeTime(DateTime date)
+    {
+        var span = DateTime.UtcNow - date;
+        if (span.TotalDays > 365) return $"{(int)(span.TotalDays / 365)} years ago";
+        if (span.TotalDays > 30) return $"{(int)(span.TotalDays / 30)} months ago";
+        if (span.TotalDays >= 7) return $"{(int)(span.TotalDays / 7)} weeks ago";
+        if (span.TotalDays >= 1) return $"{(int)span.TotalDays} day{(span.TotalDays >= 2 ? "s" : "")} ago";
+        if (span.TotalHours >= 1) return $"{(int)span.TotalHours} hour{(span.TotalHours >= 2 ? "s" : "")} ago";
+        if (span.TotalMinutes >= 1) return $"{(int)span.TotalMinutes} minute{(span.TotalMinutes >= 2 ? "s" : "")} ago";
+        return "Just now";
+    }
+}
