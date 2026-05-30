@@ -28,7 +28,7 @@ namespace CampusKart.Data
         public int Price { get; set; }
 
         [Required]
-        [StringLength(500)]
+        [StringLength(4000)]
         public string ImageUrl { get; set; } = "";
 
         [Required]

@@ -124,7 +124,7 @@
                         <a href="listing/@item.Id" class="text-decoration-none text-dark d-block h-100">
                             <div class="ck-card h-100">
                                 <div class="ck-card-img-wrapper">
-                                    <img class="ck-card-img" src="@item.ImageUrl" alt="@item.Title" />
+                                    <img class="ck-card-img" src="@(item.ImageUrl.Contains(";") ? item.ImageUrl.Split(';')[0] : item.ImageUrl)" alt="@item.Title" />
                                     <span class="ck-badge">@item.Category</span>
                                 </div>
                                 <div class="ck-card-body d-flex flex-column h-100">

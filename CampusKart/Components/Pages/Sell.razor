@@ -1,7 +1,9 @@
 @page "/sell"
 @layout Layout.UserLayout
+@rendermode InteractiveServer
 @attribute [Authorize]
 @inject CampusKart.Data.ApplicationDbContext DbContext
+@inject CloudinaryDotNet.Cloudinary? CloudinaryService
 
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
@@ -122,16 +124,70 @@
                             <ValidationMessage For="() => formModel.Price" class="text-danger mt-1 small d-block" />
                         </div>
 
-                        <!-- Mock Photo Uploader -->
+                        <!-- Real Multi-Photo Uploader -->
                         <div>
-                            <label class="form-label fw-bold text-ck-secondary small mb-2">Upload Photos (max 4)</label>
-                            <div class="border-2 border-dashed rounded-3 p-5 text-center cursor-pointer group transition-all" 
+                            <label class="form-label fw-bold text-ck-secondary small mb-2">Item Photos (Up to 5)</label>
+                            
+                            <!-- Hidden Blazor File Input supporting multiple files -->
+                            <InputFile OnChange="OnImagesSelected" multiple class="d-none" id="file-uploader" accept="image/*" />
+                            
+                            <label for="file-uploader" class="border-2 border-dashed rounded-3 p-5 text-center cursor-pointer d-block group transition-all" 
                                  style="background-color: var(--ck-background); border-color: var(--ck-border-color) !important; border-style: dashed !important; border-width: 2px !important;"
                                  id="photo-upload-zone">
-                                <span class="material-symbols-outlined text-slate-400 mb-2 text-primary-container-hover" style="font-size: 32px;">photo_camera</span>
-                                <p class="mb-0 fw-semibold text-secondary-fixed-dim" style="font-size: 14px;">Click to upload or drag and drop</p>
-                                <p class="text-muted small mt-1 mb-0" style="font-size: 12px;">High quality photos sell faster!</p>
-                            </div>
+                                
+                                <span class="material-symbols-outlined text-slate-400 mb-2 text-ck-primary-container" style="font-size: 38px;">photo_library</span>
+                                <p class="mb-0 fw-semibold text-secondary-fixed-dim" style="font-size: 15px;">Click to select up to 5 product images</p>
+                                <p class="text-muted small mt-1 mb-0" style="font-size: 12px;">Supported formats: JPG, PNG, WEBP (Max 5MB each)</p>
+                            </label>
+
+                            <!-- Live Multi-Image Preview Gallery (Figma-flat cards with close buttons) -->
+                            @if (selectedImagePreviews.Any())
+                            {
+                                <div class="mt-3">
+                                    <label class="form-label fw-bold text-ck-secondary small mb-2">Selected Photos (@selectedFiles.Count / 5)</label>
+                                    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-5 g-2">
+                                        @for (int i = 0; i < selectedImagePreviews.Count; i++)
+                                        {
+                                            var index = i;
+                                            var previewUrl = selectedImagePreviews[index];
+                                            <div class="col animate-fade-in">
+                                                <div class="position-relative bg-white rounded-3 border border-light overflow-hidden p-0.5 aspect-ratio-1x1 shadow-xs" style="aspect-ratio: 1/1;">
+                                                    <img src="@previewUrl" alt="Item Preview" class="w-100 h-100 object-fit-cover rounded-2" />
+                                                    
+                                                    <!-- Delete button -->
+                                                    <button type="button" class="position-absolute top-0 end-0 m-1 bg-dark bg-opacity-75 text-white p-0 rounded-circle border-0 d-flex align-items-center justify-content-center shadow-sm" 
+                                                         style="width: 22px; height: 22px; transition: transform 0.2s; z-index: 10;" 
+                                                         @onclick="() => RemoveSelectedImage(index)" @onclick:stopPropagation="true">
+                                                        <span class="material-symbols-outlined" style="font-size: 14px;">close</span>
+                                                    </button>
+                                                    
+                                                    @if (index == 0)
+                                                    {
+                                                        <span class="position-absolute bottom-0 start-0 w-100 bg-primary text-white text-center py-0.5 fw-bold" style="font-size: 9px; opacity: 0.95;">
+                                                            Cover Photo
+                                                        </span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                            
+                            @if (isUploadingImage)
+                            {
+                                <div class="d-flex align-items-center gap-2 mt-3 text-primary small justify-content-center">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                                    <span>Uploading @selectedFiles.Count images to Cloudinary CDN...</span>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(imageUploadError))
+                            {
+                                <div class="text-danger small mt-2 d-flex align-items-center gap-1 justify-content-center">
+                                    <span class="material-symbols-outlined fs-5">error</span>
+                                    <span>@imageUploadError</span>
+                                </div>
+                            }
                         </div>
 
                         <!-- Location Pin Selector -->
@@ -274,9 +330,64 @@
         _ => "photo_camera"
     };
 
+    private List<IBrowserFile> selectedFiles = new();
+    private List<string> selectedImagePreviews = new();
+    private bool isUploadingImage = false;
+    private string? imageUploadError;
+
+    private async Task OnImagesSelected(InputFileChangeEventArgs e)
+    {
+        imageUploadError = null;
+        var files = e.GetMultipleFiles(5);
+        
+        foreach (var file in files)
+        {
+            if (selectedFiles.Count >= 5)
+            {
+                imageUploadError = "You can only select up to 5 product images.";
+                break;
+            }
+
+            if (file.Size > 5 * 1024 * 1024)
+            {
+                imageUploadError = $"File '{file.Name}' exceeds the maximum size limit of 5MB.";
+                continue;
+            }
+
+            selectedFiles.Add(file);
+
+            // Generate an instant local preview using a base64 URL
+            try
+            {
+                var buffer = new byte[file.Size];
+                using (var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024))
+                {
+                    await stream.ReadAsync(buffer);
+                }
+                var format = file.ContentType;
+                selectedImagePreviews.Add($"data:{format};base64,{Convert.ToBase64String(buffer)}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error creating image preview: {ex.Message}");
+            }
+        }
+    }
+
+    private void RemoveSelectedImage(int index)
+    {
+        if (index >= 0 && index < selectedFiles.Count)
+        {
+            selectedFiles.RemoveAt(index);
+            selectedImagePreviews.RemoveAt(index);
+        }
+        imageUploadError = null;
+    }
+
     private async Task HandleSubmit()
     {
         _dbError = null;
+        imageUploadError = null;
 
         var authState = await GetAuthenticationStateAsync;
         var user = authState.User;
@@ -290,15 +401,70 @@
             name = name.Split('@')[0]; // Extract clean username if Name is an email address
         }
 
-        // Map Category to premium mock image placeholders so they look spectacular on the feed
-        var imageUrl = formModel.Category switch
+        var uploadedUrls = new List<string>();
+
+        // If files are selected, process their cloud uploads sequentially
+        if (selectedFiles.Any())
         {
-            "Books" => "https://lh3.googleusercontent.com/aida-public/AB6AXuCUciMTQGyq8jDrWn9Nysoro7QgRthNhqQMi2X743xstAu_iDRMHm_mbPgY_UfvZnQkA_90rw5eu_BDC8AXWjtiEx1h8yW2JlhHpFvaAs0LHULGcD4OdwLSNRlnmDp91DHWdQsAIfs5kJ-5ZyFZxq5Axez4zZMcf-vc6QQZ12KAJ_lFALHuSpo4qIuost7DLvzY7TKI1fS08n9F6d-DTDPXw07GlpM-WQLcU2bn32MhdqZPx5AHQzlhoMf_KLy12RIo4AjoK-fyr7w",
-            "Electronics" => "https://lh3.googleusercontent.com/aida-public/AB6AXuA4HnfPbgzFQazyz9VziH8I1SrCXR83ZTp4BGSd_wzaBaamvBVGfDtxpifPHUYusvWr8r0TwocqnFvK_ozT9p1l0hACxxFrniZqvDxeN01zCiEslaleQYILnNVmWsr6Yt-LSrig0KXqXapjzHPdoDv1sY0fjS0D2etBUUaq33c-ycof1WfBH_XYjvA7pyJLxRYnZh6zuZXH_QzQpfYv-Fd5XGD2c00BTfwXKVfJNPypyvBjHKHHjH_UFojBrz_dDoRpShIjDVYRIGE",
-            "Furniture" => "https://lh3.googleusercontent.com/aida-public/AB6AXuCJrsgXkdIqZEAMJaClb-D2Do_ere_dUUJDuHMxZF6lzIRI58lhqk6eLi-r5C3lKmO0RdFVKgy0mAo6B_p0SyFQMzHWsq6FHuEpqLVzhbBTSbSI5zOt5WEZBziIIfpll9zrEkapPhN42Y0-idF8nFEybHeG31S55_39ZQajZfCGeuaSeATgalWOav_MmNopP83uLdMbWuW2frAXEe-TonA-jzq0-8nj68Sbc8E4EkPi_iKWFTnsnFUHy9bvMtWDn6J8T7Ts1Rs3EIw",
-            "Stationery" => "https://lh3.googleusercontent.com/aida-public/AB6AXuCGFF11w7sq2ULliEH27irS_THHMvXFqylD_-nrGYvcx_B_1-nA4AnbGCIV8F7T4awUpqMRM6sxoKL8SOX-igzomoiN5n3_HkgcOF9_cTzKXCLkJD3tD26-wTjxsYf6-jyoXNCmjXAR6T1xsgPkqi8JAnnFPC6DOwBye9WAjr5l4e5qWykVHlNny_zT5yJhmx2cF04E03qoED6sqDugmJ6dwdmX9MG2huerflBe-XssdLTeTr6GrLRWfqTp3H4uTusXR_5Gwc47Ovw",
-            _ => "https://lh3.googleusercontent.com/aida-public/AB6AXuBx9I1ipUcY9lJBswC9kUmkYxx4OOjA-kCvYhtfSlnVEhqwGwZfLxiwu6Z6uI4eoxMXlsXQP4v4V86Tfg2OVBoEu4usKmbDGDYWcP44ky2sJzKhes2lddgAiReCTf4aftrXInVSbNUy23MbZbIJvDWRs8pXFZe-dZvNnR3qRcSouugjLkWjGN9hsMvNg3RbLzRSbewG9vdMVaDCkvO7ZOWl5zBnyfQ1p6FNy_8_WsrmGMUNsDMZdfRReRQ0X4N2uaq_GKGEbAahkoY"
-        };
+            if (CloudinaryService != null)
+            {
+                isUploadingImage = true;
+                StateHasChanged();
+                try
+                {
+                    foreach (var file in selectedFiles)
+                    {
+                        using (var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024))
+                        {
+                            var uploadParams = new CloudinaryDotNet.Actions.ImageUploadParams()
+                            {
+                                File = new CloudinaryDotNet.FileDescription(file.Name, stream),
+                                Folder = "campuskart_items",
+                                Transformation = new CloudinaryDotNet.Transformation().Quality("auto").FetchFormat("auto")
+                            };
+
+                            var uploadResult = await CloudinaryService.UploadAsync(uploadParams);
+                            if (uploadResult.Error != null)
+                            {
+                                throw new Exception(uploadResult.Error.Message);
+                            }
+
+                            if (uploadResult.SecureUrl != null)
+                            {
+                                uploadedUrls.Add(uploadResult.SecureUrl.ToString());
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    imageUploadError = $"Cloudinary upload failed: {ex.Message}. Falling back to default mock category photo.";
+                }
+                finally
+                {
+                    isUploadingImage = false;
+                    StateHasChanged();
+                }
+            }
+            else
+            {
+                imageUploadError = "Cloudinary credentials not configured. Falling back to category mock photos.";
+            }
+        }
+
+        // Semicolon join or mock fallback
+        string imageUrl = string.Join(";", uploadedUrls);
+        if (string.IsNullOrEmpty(imageUrl))
+        {
+            imageUrl = formModel.Category switch
+            {
+                "Books" => "https://lh3.googleusercontent.com/aida-public/AB6AXuCUciMTQGyq8jDrWn9Nysoro7QgRthNhqQMi2X743xstAu_iDRMHm_mbPgY_UfvZnQkA_90rw5eu_BDC8AXWjtiEx1h8yW2JlhHpFvaAs0LHULGcD4OdwLSNRlnmDp91DHWdQsAIfs5kJ-5ZyFZxq5Axez4zZMcf-vc6QQZ12KAJ_lFALHuSpo4qIuost7DLvzY7TKI1fS08n9F6d-DTDPXw07GlpM-WQLcU2bn32MhdqZPx5AHQzlhoMf_KLy12RIo4AjoK-fyr7w",
+                "Electronics" => "https://lh3.googleusercontent.com/aida-public/AB6AXuA4HnfPbgzFQazyz9VziH8I1SrCXR83ZTp4BGSd_wzaBaamvBVGfDtxpifPHUYusvWr8r0TwocqnFvK_ozT9p1l0hACxxFrniZqvDxeN01zCiEslaleQYILnNVmWsr6Yt-LSrig0KXqXapjzHPdoDv1sY0fjS0D2etBUUaq33c-ycof1WfBH_XYjvA7pyJLxRYnZh6zuZXH_QzQpfYv-Fd5XGD2c00BTfwXKVfJNPypyvBjHKHHjH_UFojBrz_dDoRpShIjDVYRIGE",
+                "Furniture" => "https://lh3.googleusercontent.com/aida-public/AB6AXuCJrsgXkdIqZEAMJaClb-D2Do_ere_dUUJDuHMxZF6lzIRI58lhqk6eLi-r5C3lKmO0RdFVKgy0mAo6B_p0SyFQMzHWsq6FHuEpqLVzhbBTSbSI5zOt5WEZBziIIfpll9zrEkapPhN42Y0-idF8nFEybHeG31S55_39ZQajZfCGeuaSeATgalWOav_MmNopP83uLdMbWuW2frAXEe-TonA-jzq0-8nj68Sbc8E4EkPi_iKWFTnsnFUHy9bvMtWDn6J8T7Ts1Rs3EIw",
+                "Stationery" => "https://lh3.googleusercontent.com/aida-public/AB6AXuCGFF11w7sq2ULliEH27irS_THHMvXFqylD_-nrGYvcx_B_1-nA4AnbGCIV8F7T4awUpqMRM6sxoKL8SOX-igzomoiN5n3_HkgcOF9_cTzKXCLkJD3tD26-wTjxsYf6-jyoXNCmjXAR6T1xsgPkqi8JAnnFPC6DOwBye9WAjr5l4e5qWykVHlNny_zT5yJhmx2cF04E03qoED6sqDugmJ6dwdmX9MG2huerflBe-XssdLTeTr6GrLRWfqTp3H4uTusXR_5Gwc47Ovw",
+                _ => "https://lh3.googleusercontent.com/aida-public/AB6AXuBx9I1ipUcY9lJBswC9kUmkYxx4OOjA-kCvYhtfSlnVEhqwGwZfLxiwu6Z6uI4eoxMXlsXQP4v4V86Tfg2OVBoEu4usKmbDGDYWcP44ky2sJzKhes2lddgAiReCTf4aftrXInVSbNUy23MbZbIJvDWRs8pXFZe-dZvNnR3qRcSouugjLkWjGN9hsMvNg3RbLzRSbewG9vdMVaDCkvO7ZOWl5zBnyfQ1p6FNy_8_WsrmGMUNsDMZdfRReRQ0X4N2uaq_GKGEbAahkoY"
+            };
+        }
 
         var listing = new CampusKart.Data.Listing
         {

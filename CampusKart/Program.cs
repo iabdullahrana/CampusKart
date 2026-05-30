@@ -17,6 +17,7 @@ namespace CampusKart
 
             // Add services to the container.
             builder.Services.AddRazorComponents()
+                .AddInteractiveServerComponents()
                 .AddInteractiveWebAssemblyComponents();
 
             builder.Services.AddCascadingAuthenticationState();
@@ -73,6 +74,20 @@ namespace CampusKart
 
             builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
+            // Register Cloudinary account configuration conditionally
+            var cloudinarySection = builder.Configuration.GetSection("Cloudinary");
+            var cloudName = cloudinarySection["CloudName"];
+            var apiKey = cloudinarySection["ApiKey"];
+            var apiSecret = cloudinarySection["ApiSecret"];
+
+            if (!string.IsNullOrEmpty(cloudName) && !string.IsNullOrEmpty(apiKey) && !string.IsNullOrEmpty(apiSecret) &&
+                cloudName != "your-cloud-name" && apiKey != "your-api-key" && apiSecret != "your-api-secret")
+            {
+                var account = new CloudinaryDotNet.Account(cloudName, apiKey, apiSecret);
+                var cloudinary = new CloudinaryDotNet.Cloudinary(account);
+                builder.Services.AddSingleton(cloudinary);
+            }
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -92,6 +107,7 @@ namespace CampusKart
             app.UseAntiforgery();
 
             app.MapRazorComponents<App>()
+                .AddInteractiveServerRenderMode()
                 .AddInteractiveWebAssemblyRenderMode()
                 .AddAdditionalAssemblies(typeof(Client._Imports).Assembly);
 

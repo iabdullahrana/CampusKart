@@ -1,5 +1,6 @@
 @page "/listing/{Id:int}"
 @layout Layout.UserLayout
+@rendermode InteractiveServer
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
@@ -38,40 +39,37 @@
     }
     else
     {
+        var imageUrls = (listing.ImageUrl ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries);
+        var mainDisplayUrl = string.IsNullOrEmpty(activeImageUrl) 
+            ? (imageUrls.FirstOrDefault() ?? listing.ImageUrl) 
+            : activeImageUrl;
+
         <!-- Main Product Section -->
         <div class="row g-4 g-lg-5">
             <!-- Left Column: Image Gallery -->
             <div class="col-lg-7">
-                <div class="bg-white rounded-4 overflow-hidden border border-light aspect-[4/3] shadow-xs mb-3">
-                    <img alt="@listing.Title" class="w-100 h-100 object-fit-cover" src="@listing.ImageUrl" />
+                <div class="bg-white rounded-4 overflow-hidden border border-light aspect-[4/3] shadow-xs mb-3" style="aspect-ratio: 4/3;">
+                    <img alt="@listing.Title" class="w-100 h-100 object-fit-cover animate-fade-in" src="@mainDisplayUrl" />
                 </div>
                 
-                <!-- Gallery Thumbnails (Aesthetic enhancement aligned with design guidelines) -->
-                <div class="row g-2">
-                    <div class="col-3">
-                        <div class="bg-white rounded-3 border border-primary p-0.5 overflow-hidden aspect-ratio-1x1 cursor-pointer position-relative" style="aspect-ratio: 1/1;">
-                            <img alt="Thumbnail 1" class="w-100 h-100 object-fit-cover rounded-2" src="@listing.ImageUrl" />
-                        </div>
-                    </div>
-                    <div class="col-3">
-                        <div class="bg-white rounded-3 border border-light p-0.5 overflow-hidden aspect-ratio-1x1 cursor-pointer position-relative opacity-75 hover-opacity-100 transition" style="aspect-ratio: 1/1;">
-                            <img alt="Detail Closeup 1" class="w-100 h-100 object-fit-cover rounded-2" src="@listing.ImageUrl" style="filter: brightness(0.9) contrast(1.1);" />
-                        </div>
-                    </div>
-                    <div class="col-3">
-                        <div class="bg-white rounded-3 border border-light p-0.5 overflow-hidden aspect-ratio-1x1 cursor-pointer position-relative opacity-75 hover-opacity-100 transition" style="aspect-ratio: 1/1;">
-                            <img alt="Detail Closeup 2" class="w-100 h-100 object-fit-cover rounded-2" src="@listing.ImageUrl" style="filter: grayscale(0.2) sepia(0.1);" />
-                        </div>
-                    </div>
-                    <div class="col-3">
-                        <div class="bg-white rounded-3 border border-light p-0.5 overflow-hidden aspect-ratio-1x1 cursor-pointer position-relative opacity-60 hover-opacity-100 transition" style="aspect-ratio: 1/1;">
-                            <img alt="Detail Context" class="w-100 h-100 object-fit-cover rounded-2" src="@listing.ImageUrl" style="filter: blur(0.5px);" />
-                            <div class="position-absolute inset-0 bg-dark bg-opacity-10 d-flex align-items-center justify-content-center rounded-2">
-                                <span class="text-white fw-bold small">+2</span>
+                <!-- Gallery Thumbnails -->
+                @if (imageUrls.Length > 1)
+                {
+                    <div class="row g-2">
+                        @foreach (var url in imageUrls)
+                        {
+                            var currentUrl = url;
+                            var isActive = currentUrl == mainDisplayUrl;
+                            <div class="col-3 col-sm-2 animate-fade-in">
+                                <div class="bg-white rounded-3 p-0.5 overflow-hidden cursor-pointer position-relative shadow-xs transition-all border @(isActive ? "border-primary" : "border-light hover-primary")" 
+                                     style="aspect-ratio: 1/1;"
+                                     @onclick="() => SetMainImage(currentUrl)">
+                                    <img alt="Thumbnail" class="w-100 h-100 object-fit-cover rounded-2" src="@currentUrl" />
+                                </div>
                             </div>
-                        </div>
+                        }
                     </div>
-                </div>
+                }
             </div>
 
             <!-- Right Column: Details & Seller Info -->
@@ -184,7 +182,7 @@
                             <a href="listing/@item.Id" class="text-decoration-none text-dark d-block h-100">
                                 <div class="ck-card h-100">
                                     <div class="ck-card-img-wrapper">
-                                        <img alt="@item.Title" class="ck-card-img" src="@item.ImageUrl" />
+                                        <img alt="@item.Title" class="ck-card-img" src="@(item.ImageUrl.Contains(";") ? item.ImageUrl.Split(';')[0] : item.ImageUrl)" />
                                         <span class="ck-badge">@item.Category</span>
                                     </div>
                                     <div class="ck-card-body d-flex flex-column h-100">
@@ -221,10 +219,17 @@
     private Listing? listing;
     private List<Listing> similarListings = new();
     private ApplicationUser? sellerUser;
+    private string? activeImageUrl;
     private bool isLoading = true;
+
+    private void SetMainImage(string url)
+    {
+        activeImageUrl = url;
+    }
 
     protected override async Task OnParametersSetAsync()
     {
+        activeImageUrl = null; // Reset image preview for the new listing
         isLoading = true;
         try
         {
