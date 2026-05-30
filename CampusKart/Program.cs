@@ -20,6 +20,8 @@ namespace CampusKart
                 .AddInteractiveServerComponents()
                 .AddInteractiveWebAssemblyComponents();
 
+            builder.Services.AddSignalR();
+
             builder.Services.AddCascadingAuthenticationState();
             builder.Services.AddScoped<IdentityUserAccessor>();
             builder.Services.AddScoped<IdentityRedirectManager>();
@@ -113,6 +115,8 @@ namespace CampusKart
 
             // Add additional endpoints required by the Identity /Account Razor components.
             app.MapAdditionalIdentityEndpoints();
+
+            app.MapHub<CampusKart.Hubs.ChatHub>("/chathub");
 
             app.Run();
         }

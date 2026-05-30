@@ -2,10 +2,13 @@
 @layout Layout.UserLayout
 @attribute [Authorize]
 @rendermode InteractiveServer
+@implements IAsyncDisposable
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
 @using System.Security.Claims
+@using System.Text.Json
 @using CampusKart.Data
+@using Microsoft.AspNetCore.SignalR.Client
 @inject ApplicationDbContext DbContext
 @inject NavigationManager Navigation
 
@@ -31,7 +34,16 @@
 
                 <!-- Conversation list -->
                 <div class="flex-grow-1 overflow-y-auto" style="max-height: 520px;">
-                    @if (FilteredConversations.Any())
+                    @if (isLoading)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="text-ck-secondary small mt-2" style="color: #5d5f5f;">Loading chats...</p>
+                        </div>
+                    }
+                    else if (FilteredConversations.Any())
                     {
                         <div class="list-group list-group-flush">
                             @foreach (var chat in FilteredConversations)
@@ -80,7 +92,16 @@
 
         <!-- Right Panel (Chat Conversation Area) -->
         <div class="col-md-8 col-lg-9 h-100 d-flex flex-column">
-            @if (activeChat != null)
+            @if (isLoading)
+            {
+                <div class="bg-white border rounded-4 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center text-center p-5" style="border-color: #e4e2e1 !important; border-radius: 1rem !important;">
+                    <div class="spinner-border text-primary shadow-sm" style="width: 3rem; height: 3rem; color: #0056B3 !important;" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-ck-secondary small mt-3" style="color: #5d5f5f;">Connecting to chat...</p>
+                </div>
+            }
+            else if (activeChat != null)
             {
                 <div class="bg-white border rounded-4 shadow-sm h-100 d-flex flex-column overflow-hidden" style="border-color: #e4e2e1 !important; border-radius: 1rem !important;">
                     <!-- Chat Header -->
@@ -102,7 +123,7 @@
                                 <h3 class="fw-bold text-ck-primary m-0" style="font-size: 16px; color: #003f87;">@activeChat.Name</h3>
                                 <div class="d-flex align-items-center gap-1.5 small">
                                     <span class="d-inline-block rounded-circle bg-success" style="width: 7px; height: 7px; border-radius: 50% !important;"></span>
-                                    <span class="text-ck-secondary" style="font-size: 12px; color: #5d5f5f;">Online</span>
+                                    <span class="text-ck-secondary" style="font-size: 12px; color: #5d5f5f;">Active</span>
                                 </div>
                             </div>
                         </div>
@@ -143,13 +164,6 @@
 
                     <!-- Messages Scroll Container -->
                     <div class="flex-grow-1 overflow-y-auto p-4 bg-light d-flex flex-column gap-3" style="max-height: 420px; background-color: #f8f9fa !important;">
-                        <!-- Date Separator -->
-                        <div class="text-center my-2">
-                            <span class="badge px-3 py-1.5 rounded-pill border-0 small" style="background-color: #dfe0e0; color: #003f87; border-radius: 9999px !important;">
-                                Today, June 14
-                            </span>
-                        </div>
-
                         <!-- Chat Messages -->
                         @foreach (var msg in activeChat.Messages)
                         {
@@ -177,30 +191,6 @@
                                     </div>
                                 </div>
                                 <span class="text-ck-secondary small mt-1 px-2" style="font-size: 10px; color: #5d5f5f;">@msg.Time</span>
-                            </div>
-                        }
-
-                        <!-- Live Typing Indicator Mockup -->
-                        @if (isTyping)
-                        {
-                            <div class="d-flex align-items-center gap-2 align-self-start">
-                                <div class="rounded-circle overflow-hidden flex-shrink-0" style="width: 28px; height: 28px; background-color: #f6f3f2; border: 1px solid #e4e2e1;">
-                                    @if (!string.IsNullOrEmpty(activeChat.AvatarUrl))
-                                    {
-                                        <img src="@activeChat.AvatarUrl" alt="@activeChat.Name" class="w-100 h-100" style="object-fit: cover;" />
-                                    }
-                                    else
-                                    {
-                                        <div class="w-100 h-100 bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="font-size: 11px;">
-                                            @activeChat.Name.Substring(0, 1).ToUpper()
-                                        </div>
-                                    }
-                                </div>
-                                <div class="bg-white border rounded-4 px-3 py-2.5 d-flex align-items-center gap-1 shadow-sm" style="border-color: #e4e2e1 !important; border-radius: 1rem !important;">
-                                    <div class="spinner-grow spinner-grow-sm text-secondary" role="status" style="width: 6px; height: 6px; animation-duration: 0.8s;"></div>
-                                    <div class="spinner-grow spinner-grow-sm text-secondary" role="status" style="width: 6px; height: 6px; animation-duration: 0.8s; animation-delay: 0.2s;"></div>
-                                    <div class="spinner-grow spinner-grow-sm text-secondary" role="status" style="width: 6px; height: 6px; animation-duration: 0.8s; animation-delay: 0.4s;"></div>
-                                </div>
                             </div>
                         }
                     </div>
@@ -251,8 +241,8 @@
 
     private string searchQuery = "";
     private string typedMessage = "";
-    private string activeChatId = "chat-1";
-    private bool isTyping = false;
+    private string? activeChatId;
+    private bool isLoading = true;
 
     private List<ChatSession> conversations = new();
     private ChatSession? activeChat => conversations.FirstOrDefault(c => c.Id == activeChatId);
@@ -263,113 +253,184 @@
             : conversations.Where(c => c.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) || 
                                        c.ItemTitle.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
 
+    private HubConnection? hubConnection;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? GetAuthenticationStateAsync { get; set; }
+    private string? currentUserEmail;
+
     protected override async Task OnInitializedAsync()
     {
-        // Load initial mock interactive conversations matching the exact Stitch design!
-        conversations = new List<ChatSession>
+        isLoading = true;
+        try
         {
-            new ChatSession
+            if (GetAuthenticationStateAsync != null)
             {
-                Id = "chat-1",
-                Name = "Hassan Ali",
-                AvatarUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuBOXeAZ0fHRDOwAr1EGhb5cDwkGLmT2k4Vg2YUYdxk5OszLXjK6yr9SEmoDWrDOoWs2yu3JflbHh7_mOSJ6f61v557eyN9hus9D5rh0xFmlQUBZ9lMWzHuUcxawxkqg3Xwcx_Zbvh0hUChFrkdOL5vypmGTUOeA6cYtQAvhPoD9yZipKDXd05j6mg_jZuOLg-n2rMU-7pyiXu82sme0vgJrshlmI_y7Kwb1pRvLENJckDGBvB0gsuxIB8fU_dyen9uB5RFrJ18W7QI",
-                LastMessageTime = "12:45 PM",
-                ItemId = 1,
-                ItemTitle = "Ergonomic Study Chair",
-                ItemPrice = 12500,
-                ItemImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuDcAXK0gnRBSDb9MMeQJn1yhGSiJZhs9eKZEmnGspKou9LJyGk0NxobxE8DbCxxCSdmj9bW4qS5GrTiEzguvPqKhZBGsZd-lf6IZYA-NCn7jAGLXWI-bsFEshcYYjNM3R5IzHD3xutRWo_PuqsXW_iLXb8ytSi2rHK5xF8cdriCWgca9IaHt2SsDK9nDcNtO4LhcLVxA-goe4BcAI4R0sd2Mumhs5JV1GhANq0KyANWDZZoimoAsLBj4LlT6wD46yTJPmOpOXsNERE",
-                ItemStatus = "Available",
-                Messages = new List<ChatMessage>
+                var authState = await GetAuthenticationStateAsync;
+                var user = authState.User;
+                if (user.Identity?.IsAuthenticated == true)
                 {
-                    new ChatMessage { IsMe = false, Text = "Hey! Is the ergonomic study chair still available for pick up today?", Time = "12:45 PM" },
-                    new ChatMessage { IsMe = true, Text = "Yes, it is! I'll be home after 4 PM. Does that work for you?", Time = "12:48 PM" },
-                    new ChatMessage { IsMe = false, Text = "4:30 PM would be perfect. Where exactly should I come?", Time = "12:50 PM" },
-                    new ChatMessage { IsMe = true, Text = "I'm at the North Campus Dorms, Building B. You can park right in front of the main entrance.", Time = "12:52 PM" }
-                }
-            },
-            new ChatSession
-            {
-                Id = "chat-2",
-                Name = "Sarah Khan",
-                AvatarUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuBvPyGfvVctS3fzE8fDyNwawtrNb3vO65aOiloy2DZCHf2GwMRSkFaBKL6QN4DnCIpGNTyodykQ27APOGEurerNiPdJkAH_pyws_HHZ4dTrUJN0oZmx5yh9CAhiVF0wUjVy-salafqCyN1hXO7-dcqwfppV3HMZ-kzM4hF6s9lVH3hS0URX1qPeMrV1W9ydWUbKR0iff6wGE7BB7k54JMipexRMUczl4E1ieBzH98gnULYqDtyGIhFNUlY-4WwGvT1cSLHlhN_1eRk",
-                LastMessageTime = "Yesterday",
-                ItemId = 2,
-                ItemTitle = "Mechanical Engineering Textbook",
-                ItemPrice = 1200,
-                ItemImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuC6WrU0KV-UwJqDZCA4_oTZSERRMWkNLzyauDPyO0QrzNWC_GNGQf9ozntbFeHWsV0EmnaUCbWT6qzklNYO929Tg9IWjAwX6kYySm_K9nUJslnJokQbFfR15NHZL0oPzfOVvKwOvwXrAP2Og9dXIcfVRebTr2-YPLFTdT607jjyHspGW7ydKC9p5CtdJjKFoUlFfBMGRe2sZFfNCKbgIidWVg53b3unFA8DquGxss5w5D1tb_sjOBmMRFu4lBsNAfQaH5MnuDuNo8o",
-                ItemStatus = "Available",
-                Messages = new List<ChatMessage>
-                {
-                    new ChatMessage { IsMe = false, Text = "Hi, is the Mechanical Engineering textbook available?", Time = "Yesterday 2:00 PM" },
-                    new ChatMessage { IsMe = true, Text = "Yes! I can meet you at the library lobby tomorrow afternoon.", Time = "Yesterday 2:15 PM" },
-                    new ChatMessage { IsMe = false, Text = "Thanks for the textbook! It's in great condition.", Time = "Yesterday 4:00 PM" }
-                }
-            },
-            new ChatSession
-            {
-                Id = "chat-3",
-                Name = "Abdul-Rehman",
-                AvatarUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuAUnW8GwoHTJJJwLf5JXyE7X5pZbgNXTw98vSPRnWDIso1YwocEgPSXt7K-qfq5RCJfrwCKAcX7-8ZuNuYYQ8Fdh1OzJ_G2vh154iQP47lUnVYDO4mBlVbR8VRA7eNm3e57OOCDiAbSPSCtta9E0DA16Yk-zejMXgjzedRpq8aa6bNf5Oh2bq6GfzOPkRQbT_0ojN2uWU6eLTbzRJnpdL7BV4nhKCMP0tQ0uracdoktds63CvAbxWk8kOguZADr1BDVpD3_tDMh8q4",
-                LastMessageTime = "Mon",
-                ItemId = 3,
-                ItemTitle = "MacBook Pro M1",
-                ItemPrice = 185000,
-                ItemImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuDZnZ5HkZmBsmIFLGo94BEkTOdYNtb1zDBdkAOBRb6m3eoeIP_BLXZEmyEBoGURJoRC9tya7os6LdkZe7l6kmS9QqSMmD8C0lPj_U4YtYWKJbz6DXKczttv0a9mXUKDGZYKt2S_Ug3p9B1PYciOLwkvxv-ArDXNm7giJMEPFXzmYR9wWR1ZJydEF22gH_i16bWt3RjF6aCeE4xk89LjDYlmGubkI0jHmjB1f0y936MHXQUZC5OppCN-iFDWCZ9ozzBeywOsgGChr_U",
-                ItemStatus = "Available",
-                Messages = new List<ChatMessage>
-                {
-                    new ChatMessage { IsMe = false, Text = "Hey bro, is the price for the MacBook Pro negotiable?", Time = "Mon 10:11 AM" },
-                    new ChatMessage { IsMe = true, Text = "A little bit, what is your offer?", Time = "Mon 10:15 AM" },
-                    new ChatMessage { IsMe = false, Text = "Would you take 175k for it? Can pay cash today.", Time = "Mon 10:30 AM" }
+                    currentUserEmail = user.FindFirst(ClaimTypes.Email)?.Value;
                 }
             }
-        };
 
-        // Handle dynamically routed listings (e.g. from the Contact Seller button on details page!)
-        if (ListingId.HasValue)
-        {
-            var targetListing = await DbContext.Listings.FindAsync(ListingId.Value);
-            if (targetListing != null)
+            if (string.IsNullOrEmpty(currentUserEmail))
             {
-                // Check if a session already exists with this seller email and item ID
-                var existingSession = conversations.FirstOrDefault(c => c.ItemId == targetListing.Id);
-                if (existingSession != null)
+                Navigation.NavigateTo("login");
+                return;
+            }
+
+            // Establish real-time SignalR Connection
+            var hubUrl = Navigation.ToAbsoluteUri("/chathub");
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(hubUrl)
+                .WithAutomaticReconnect()
+                .Build();
+
+            // Handle incoming real-time messages
+            hubConnection.On<string>("ReceiveMessage", async (messageJson) =>
+            {
+                // Reload conversations from the SQL Server database to show synchronized real-time state!
+                await InvokeAsync(async () =>
                 {
-                    activeChatId = existingSession.Id;
-                }
-                else
+                    await LoadConversations();
+                    StateHasChanged();
+                });
+            });
+
+            await hubConnection.StartAsync();
+
+            // Join personal real-time messaging group
+            await hubConnection.SendAsync("JoinChatGroup", currentUserEmail);
+
+            // Load initial persisted database chats
+            await LoadConversations();
+
+            // Handle Contact Seller parameter from Item Details page
+            if (ListingId.HasValue)
+            {
+                var targetListing = await DbContext.Listings.FindAsync(ListingId.Value);
+                if (targetListing != null && targetListing.SellerEmail != currentUserEmail)
                 {
-                    // Look up custom seller avatar url in DB
-                    var sellerUser = await DbContext.Users.FirstOrDefaultAsync(u => u.Email == targetListing.SellerEmail);
-                    var avatarUrl = sellerUser?.ProfilePictureUrl ?? "https://lh3.googleusercontent.com/aida-public/AB6AXuDecJwkdbQ-rmoX14-09GUl5NJfxLb4zvKE6SBT92JVFe9GTfMojhHGHocwOcERXACoN4lQ88buCP6H5_POtOjYVP6hcVZ7Ifth31G7rAc6bVUalQNovtbB_0_gCCt45YEN6EDkE2r8WTILQH1B9D9fuPfxRP1tS8E5iOZpeTkXXqLqVTrtKQyJvKcugJbYnntPk3FtKDVUdMhK-JulcK-bpVvJkjD_gyOVSnb6JamoDuXOsaN8J-4vE2dq8_Xx1lAFv90do9oIuy8";
-                    
-                    var newSessionId = $"chat-{conversations.Count + 1}";
-                    var newSession = new ChatSession
+                    var targetId = $"session_{targetListing.SellerEmail.ToLower().Trim()}_{targetListing.Id}";
+                    var existingSession = conversations.FirstOrDefault(c => c.Id == targetId);
+
+                    if (existingSession != null)
                     {
-                        Id = newSessionId,
-                        Name = targetListing.SellerName,
-                        AvatarUrl = avatarUrl,
-                        LastMessageTime = "Just now",
-                        ItemId = targetListing.Id,
-                        ItemTitle = targetListing.Title,
-                        ItemPrice = targetListing.Price,
-                        ItemImageUrl = targetListing.ImageUrl,
-                        ItemStatus = string.IsNullOrEmpty(targetListing.Status) ? "Available" : targetListing.Status,
-                        Messages = new List<ChatMessage>
+                        activeChatId = existingSession.Id;
+                    }
+                    else
+                    {
+                        // Create a new greeting message and persist it to the database
+                        var greetingMessage = new Message
                         {
-                            new ChatMessage { IsMe = true, Text = $"Hi! I am interested in buying your listed item: {targetListing.Title}. Is it still available?", Time = DateTime.Now.ToString("h:mm tt") }
-                        }
-                    };
+                            ListingId = targetListing.Id,
+                            SenderEmail = currentUserEmail,
+                            ReceiverEmail = targetListing.SellerEmail,
+                            Content = $"Hi! I am interested in buying your listed item: {targetListing.Title}. Is it still available?",
+                            Timestamp = DateTime.UtcNow
+                        };
 
-                    conversations.Insert(0, newSession);
-                    activeChatId = newSessionId;
-                    
-                    // Trigger dynamic mock reply in background
-#pragma warning disable CS4014
-                    _ = TriggerMockResponse(newSession);
-#pragma warning restore CS4014
+                        DbContext.Messages.Add(greetingMessage);
+                        await DbContext.SaveChangesAsync();
+
+                        // Reload conversations to include the new thread
+                        await LoadConversations();
+                        activeChatId = targetId;
+
+                        // Notify the seller in real time about the new message
+                        var msgJson = JsonSerializer.Serialize(greetingMessage);
+                        await hubConnection.SendAsync("SendMessage", targetListing.SellerEmail, msgJson);
+                    }
                 }
             }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error starting real-time chat dashboard: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadConversations()
+    {
+        if (string.IsNullOrEmpty(currentUserEmail)) return;
+
+        // Query all message rows involving the current user
+        var allMessages = await DbContext.Messages
+            .Where(m => m.SenderEmail == currentUserEmail || m.ReceiverEmail == currentUserEmail)
+            .OrderBy(m => m.Timestamp)
+            .ToListAsync();
+
+        // Group chats into threads by OtherPersonEmail and ListingId
+        var groups = allMessages.GroupBy(m => new 
+        { 
+            ListingId = m.ListingId,
+            OtherEmail = m.SenderEmail.Equals(currentUserEmail, StringComparison.OrdinalIgnoreCase) 
+                ? m.ReceiverEmail 
+                : m.SenderEmail 
+        });
+
+        var sessionsList = new List<ChatSession>();
+
+        foreach (var grp in groups)
+        {
+            // Fetch listing details from listings table
+            var targetListing = await DbContext.Listings.FindAsync(grp.Key.ListingId);
+            
+            // If the listing has been physically deleted, fallback gracefully
+            var itemTitle = targetListing?.Title ?? "Deleted Item";
+            var itemPrice = targetListing?.Price ?? 0;
+            var itemImageUrl = targetListing?.ImageUrl ?? "";
+            var itemStatus = targetListing?.Status ?? "Unavailable";
+
+            // Fetch other person's student profile details
+            var otherUser = await DbContext.Users.FirstOrDefaultAsync(u => u.Email == grp.Key.OtherEmail);
+            var otherName = otherUser?.FullName ?? GetDisplayNameFromEmail(grp.Key.OtherEmail);
+            var otherAvatar = otherUser?.ProfilePictureUrl ?? "";
+
+            var chatMessages = grp.Select(m => new ChatMessage
+            {
+                IsMe = m.SenderEmail.Equals(currentUserEmail, StringComparison.OrdinalIgnoreCase),
+                Text = m.Content,
+                Time = m.Timestamp.ToLocalTime().ToString("h:mm tt")
+            }).ToList();
+
+            var lastMessageObj = grp.LastOrDefault();
+            var lastTimeText = "";
+            if (lastMessageObj != null)
+            {
+                var localTime = lastMessageObj.Timestamp.ToLocalTime();
+                lastTimeText = (localTime.Date == DateTime.Today) 
+                    ? localTime.ToString("h:mm tt") 
+                    : localTime.ToString("MM/dd");
+            }
+
+            sessionsList.Add(new ChatSession
+            {
+                Id = $"session_{grp.Key.OtherEmail.ToLower().Trim()}_{grp.Key.ListingId}",
+                Name = otherName,
+                AvatarUrl = otherAvatar,
+                LastMessageTime = lastTimeText,
+                ItemId = grp.Key.ListingId,
+                ItemTitle = itemTitle,
+                ItemPrice = itemPrice,
+                ItemImageUrl = itemImageUrl,
+                ItemStatus = string.IsNullOrEmpty(itemStatus) ? "Available" : itemStatus,
+                OtherEmail = grp.Key.OtherEmail,
+                Messages = chatMessages
+            });
+        }
+
+        conversations = sessionsList.OrderByDescending(s => s.Messages.LastOrDefault()?.Time).ToList();
+
+        // Default to select first active chat if none is focused
+        if (string.IsNullOrEmpty(activeChatId) && conversations.Any())
+        {
+            activeChatId = conversations.First().Id;
         }
     }
 
@@ -377,67 +438,66 @@
     {
         activeChatId = id;
         typedMessage = "";
-        isTyping = false;
     }
 
-    private void HandleKeyUp(KeyboardEventArgs e)
+    private async Task HandleKeyUp(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
         {
-            SendMessage();
+            await SendMessage();
         }
     }
 
     private async Task SendMessage()
     {
-        if (string.IsNullOrWhiteSpace(typedMessage) || activeChat == null) return;
+        if (string.IsNullOrWhiteSpace(typedMessage) || activeChat == null || string.IsNullOrEmpty(currentUserEmail)) return;
 
         var text = typedMessage.Trim();
         typedMessage = "";
 
-        // Add my message
-        var myMsg = new ChatMessage
+        try
         {
-            IsMe = true,
-            Text = text,
-            Time = DateTime.Now.ToString("h:mm tt")
-        };
-        activeChat.Messages.Add(myMsg);
-        activeChat.LastMessageTime = DateTime.Now.ToString("h:mm tt");
+            // Persist the message to SQL Server database
+            var newMessage = new Message
+            {
+                ListingId = activeChat.ItemId,
+                SenderEmail = currentUserEmail,
+                ReceiverEmail = activeChat.OtherEmail,
+                Content = text,
+                Timestamp = DateTime.UtcNow
+            };
 
-        // Mock automated response
-        await TriggerMockResponse(activeChat);
+            DbContext.Messages.Add(newMessage);
+            await DbContext.SaveChangesAsync();
+
+            // Refresh local UI logs instantly
+            await LoadConversations();
+
+            // Broadcast the message payload in real-time to the recipient via WebSockets (SignalR)
+            if (hubConnection != null && hubConnection.State == HubConnectionState.Connected)
+            {
+                var msgJson = JsonSerializer.Serialize(newMessage);
+                await hubConnection.SendAsync("SendMessage", activeChat.OtherEmail, msgJson);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending real-time message: {ex.Message}");
+        }
     }
 
-    private async Task TriggerMockResponse(ChatSession session)
+    private string GetDisplayNameFromEmail(string email)
     {
-        isTyping = true;
-        StateHasChanged();
+        var parts = email.Split('@');
+        return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(parts[0].Replace(".", " "));
+    }
 
-        // 1.5 second typing simulation
-        await Task.Delay(1500);
-        
-        isTyping = false;
-        
-        // Select smart replies based on sender name
-        string replyText = session.Name switch
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection != null)
         {
-            "Hassan Ali" => "Awesome, thank you! I will park there and text you when I arrive at 4:30 PM. See you soon!",
-            "Sarah Khan" => "You're welcome! Good luck with your studies and semester projects!",
-            "Abdul-Rehman" => "175k works for me if we can meet tomorrow at the main campus café. Let me know!",
-            _ => $"Hey! Yes, the {session.ItemTitle} is still available. I can meet you on campus near the library tomorrow, does that work for you?"
-        };
-
-        var replyMsg = new ChatMessage
-        {
-            IsMe = false,
-            Text = replyText,
-            Time = DateTime.Now.ToString("h:mm tt")
-        };
-        
-        session.Messages.Add(replyMsg);
-        session.LastMessageTime = DateTime.Now.ToString("h:mm tt");
-        StateHasChanged();
+            await hubConnection.DisposeAsync();
+        }
     }
 
     public class ChatSession
@@ -451,6 +511,7 @@
         public int ItemPrice { get; set; }
         public string ItemImageUrl { get; set; } = "";
         public string ItemStatus { get; set; } = "";
+        public string OtherEmail { get; set; } = "";
         public List<ChatMessage> Messages { get; set; } = new();
     }
 
