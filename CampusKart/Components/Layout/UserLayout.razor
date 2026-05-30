@@ -17,7 +17,7 @@
                     
                     <AuthorizeView>
                         <Authorized>
-                            <a class="nav-link text-ck-secondary fw-semibold hover-primary" href="#">Messages</a>
+                            <a class="@GetNavLinkClass("messages")" href="messages">Messages</a>
                             <a class="@GetNavLinkClass("listings")" href="listings">Your Listing</a>
                             
                             <!-- Classical Profile Circle & Dropdown Popup (Pure CSS for Static SSR) -->
@@ -89,7 +89,7 @@
                     
                     <AuthorizeView>
                         <Authorized>
-                            <a class="nav-link text-ck-secondary fw-semibold py-2 border-bottom" href="#" @onclick="ToggleMobileMenu">Messages</a>
+                            <a class="@GetMobileNavLinkClass("messages")" href="messages" @onclick="ToggleMobileMenu">Messages</a>
                             <a class="@GetMobileNavLinkClass("listings")" href="listings" @onclick="ToggleMobileMenu">Your Listing</a>
                             
                             <!-- Mobile Profile Summary with Logout POST -->
