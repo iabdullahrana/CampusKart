@@ -1,6 +1,7 @@
 @page "/listings"
 @layout Layout.UserLayout
 @attribute [Authorize]
+@rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
 @using System.Security.Claims
@@ -14,13 +15,31 @@
     <!-- Title and Post New Button -->
     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-end gap-3 mb-5">
         <div>
-            <h1 class="fw-bold text-ck-primary tracking-tight m-0" style="font-size: 36px;">Your Listings</h1>
-            <p class="text-ck-secondary m-0 mt-1">Manage and track your posted marketplace items</p>
+            <h1 class="fw-bold text-ck-primary tracking-tight m-0" style="font-size: 36px; color: #003f87;">Your Listings</h1>
+            <p class="text-ck-secondary m-0 mt-1" style="color: #5d5f5f;">Manage and track your posted marketplace items</p>
         </div>
-        <a href="sell" class="btn btn-ck-primary px-4 py-2.5 rounded-3 fw-bold d-inline-flex align-items-center gap-2 text-decoration-none shadow-sm transition-all" style="background-color: #0056B3 !important; border-color: #0056B3 !important; color: white !important;">
+        <a href="sell" class="btn btn-ck-primary px-4 py-2.5 rounded-3 fw-bold d-inline-flex align-items-center gap-2 text-decoration-none shadow-sm transition-all" style="background-color: #0056B3 !important; border-color: #0056B3 !important; color: white !important; border-radius: 0.5rem !important;">
             <span class="material-symbols-outlined fs-5">add</span>
             <span>Post New Item</span>
         </a>
+    </div>
+
+    <!-- Filters Tabs Bar -->
+    <div class="border-bottom mb-4" style="border-color: #e4e2e1 !important;">
+        <nav class="d-flex gap-4">
+            <button class="@GetTabClass("All")" @onclick='() => SetActiveTab("All")' style="background: none; border-radius: 0;">
+                All <span class="badge bg-ck-accent-section rounded-pill border-0 ms-1 fw-bold" style="background-color: #dfe0e0; color: #003f87;">@allCount</span>
+            </button>
+            <button class="@GetTabClass("Active")" @onclick='() => SetActiveTab("Active")' style="background: none; border-radius: 0;">
+                Active <span class="badge bg-ck-accent-section rounded-pill border-0 ms-1 fw-bold" style="background-color: #dfe0e0; color: #003f87;">@activeCount</span>
+            </button>
+            <button class="@GetTabClass("Pending")" @onclick='() => SetActiveTab("Pending")' style="background: none; border-radius: 0;">
+                Pending <span class="badge bg-ck-accent-section rounded-pill border-0 ms-1 fw-bold" style="background-color: #dfe0e0; color: #003f87;">@pendingCount</span>
+            </button>
+            <button class="@GetTabClass("Sold")" @onclick='() => SetActiveTab("Sold")' style="background: none; border-radius: 0;">
+                Sold <span class="badge bg-ck-accent-section rounded-pill border-0 ms-1 fw-bold" style="background-color: #dfe0e0; color: #003f87;">@soldCount</span>
+            </button>
+        </nav>
     </div>
 
     @if (isLoading)
@@ -36,10 +55,10 @@
     {
         <!-- Listings Cards List -->
         <div class="position-relative">
-            @if (userListings.Any())
+            @if (filteredListings.Any())
             {
                 <div class="d-flex flex-column gap-3">
-                    @foreach (var item in userListings)
+                    @foreach (var item in filteredListings)
                     {
                         var isCurrentItemDeleting = (confirmDeleteId == item.Id);
                         
@@ -84,17 +103,35 @@
                                 <!-- Status Badge and Actions column -->
                                 <div class="col-md-auto text-center text-md-end">
                                     <div class="d-flex flex-wrap flex-md-column align-items-center justify-content-center justify-content-md-end gap-2">
-                                        <!-- Active Status Badge -->
-                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-20 px-3 py-1.5 rounded-pill fw-semibold mb-md-2" style="border-radius: 9999px !important;">
-                                            Active
-                                        </span>
+                                        <!-- Status Badge -->
+                                        @if (item.Status == "Sold")
+                                        {
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-20 px-3 py-1.5 rounded-pill fw-semibold mb-md-2" style="border-radius: 9999px !important;">
+                                                Sold
+                                            </span>
+                                        }
+                                        else if (item.Status == "Pending")
+                                        {
+                                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-20 px-3 py-1.5 rounded-pill fw-semibold mb-md-2" style="border-radius: 9999px !important;">
+                                                Pending Approval
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-20 px-3 py-1.5 rounded-pill fw-semibold mb-md-2" style="border-radius: 9999px !important;">
+                                                Active
+                                            </span>
+                                        }
 
                                         <!-- Actions -->
                                         <div class="d-flex gap-2">
-                                            <a href="listing/@item.Id" class="btn btn-outline-primary px-3 py-2 rounded-3 fw-bold small d-inline-flex align-items-center gap-1" style="border-radius: 0.5rem !important; border-color: #0056b3 !important; color: #0056b3 !important;">
-                                                <span class="material-symbols-outlined fs-6">visibility</span>
-                                                <span>View</span>
-                                            </a>
+                                            @if (item.Status == "Active" || string.IsNullOrEmpty(item.Status))
+                                            {
+                                                <button class="btn btn-outline-success px-3 py-2 rounded-3 fw-bold small d-inline-flex align-items-center gap-1" style="border-radius: 0.5rem !important; border-color: #28a745 !important; color: #28a745 !important;" @onclick="() => MarkAsSold(item)">
+                                                    <span class="material-symbols-outlined fs-6">check_circle</span>
+                                                    <span>Sold</span>
+                                                </button>
+                                            }
                                             <button class="btn btn-outline-danger px-3 py-2 rounded-3 fw-bold small d-inline-flex align-items-center gap-1" style="border-radius: 0.5rem !important; border-color: #ba1a1a !important; color: #ba1a1a !important;" @onclick="() => PromptDelete(item.Id)">
                                                 <span class="material-symbols-outlined fs-6">delete</span>
                                                 <span>Delete</span>
@@ -112,8 +149,8 @@
                 <div class="text-center py-5 bg-white border rounded-4 my-4 shadow-sm" style="border-color: #e4e2e1 !important; border-radius: 1rem !important;">
                     <span class="material-symbols-outlined text-secondary fs-1 mb-3" style="font-size: 64px; color: #c6c6c7 !important;">drafts</span>
                     <h4 class="fw-bold text-ck-primary" style="color: #003f87;">No Listings Found</h4>
-                    <p class="text-ck-secondary small" style="color: #5d5f5f;">You don't have any items currently listed for sale.</p>
-                    <a href="sell" class="btn btn-ck-primary px-4 py-2 mt-2 rounded-3 fw-bold text-decoration-none" style="background-color: #0056B3 !important; border-color: #0056B3 !important; color: white !important;">
+                    <p class="text-ck-secondary small" style="color: #5d5f5f;">You don't have any items currently under the "@activeTab" filter category.</p>
+                    <a href="sell" class="btn btn-ck-primary px-4 py-2 mt-2 rounded-3 fw-bold text-decoration-none" style="background-color: #0056B3 !important; border-color: #0056B3 !important; color: white !important; border-radius: 0.5rem !important;">
                         Post Your First Item
                     </a>
                 </div>
@@ -149,8 +186,15 @@
 
 @code {
     private List<Listing> userListings = new();
+    private List<Listing> filteredListings = new();
+    private string activeTab = "All";
     private bool isLoading = true;
     private int? confirmDeleteId;
+    
+    private int allCount;
+    private int activeCount;
+    private int pendingCount;
+    private int soldCount;
 
     [CascadingParameter]
     private Task<AuthenticationState>? GetAuthenticationStateAsync { get; set; }
@@ -192,6 +236,54 @@
             .Where(l => l.SellerEmail == currentUserEmail)
             .OrderByDescending(l => l.DatePosted)
             .ToListAsync();
+
+        // Calculate counts
+        allCount = userListings.Count;
+        activeCount = userListings.Count(l => l.Status == "Active" || string.IsNullOrEmpty(l.Status));
+        pendingCount = userListings.Count(l => l.Status == "Pending");
+        soldCount = userListings.Count(l => l.Status == "Sold");
+
+        ApplyFilter();
+    }
+
+    private void SetActiveTab(string tab)
+    {
+        activeTab = tab;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        filteredListings = activeTab switch
+        {
+            "Active" => userListings.Where(l => l.Status == "Active" || string.IsNullOrEmpty(l.Status)).ToList(),
+            "Pending" => userListings.Where(l => l.Status == "Pending").ToList(),
+            "Sold" => userListings.Where(l => l.Status == "Sold").ToList(),
+            _ => userListings
+        };
+    }
+
+    private string GetTabClass(string tab)
+    {
+        bool isActive = (activeTab == tab);
+        return isActive
+            ? "btn border-0 py-3 px-1 text-ck-primary fw-bold border-bottom border-3 border-primary pb-1"
+            : "btn border-0 py-3 px-1 text-ck-secondary fw-semibold hover-primary";
+    }
+
+    private async Task MarkAsSold(Listing listing)
+    {
+        try
+        {
+            listing.Status = "Sold";
+            DbContext.Entry(listing).State = EntityState.Modified;
+            await DbContext.SaveChangesAsync();
+            await LoadListings();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error marking listing as sold: {ex.Message}");
+        }
     }
 
     private void PromptDelete(int id)

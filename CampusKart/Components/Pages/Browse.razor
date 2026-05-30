@@ -175,7 +175,10 @@
     {
         try
         {
-            var listings = await DbContext.Listings.OrderByDescending(l => l.DatePosted).ToListAsync();
+            var listings = await DbContext.Listings
+                .Where(l => l.Status == "Active" || string.IsNullOrEmpty(l.Status))
+                .OrderByDescending(l => l.DatePosted)
+                .ToListAsync();
             dbItems = listings.Select(l => new MarketplaceItem
             {
                 Id = l.Id,

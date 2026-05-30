@@ -241,7 +241,7 @@
 
                 // Query similar listings in the same category
                 similarListings = await DbContext.Listings
-                    .Where(l => l.Category == listing.Category && l.Id != Id)
+                    .Where(l => l.Category == listing.Category && l.Id != Id && (l.Status == "Active" || string.IsNullOrEmpty(l.Status)))
                     .OrderByDescending(l => l.DatePosted)
                     .Take(4)
                     .ToListAsync();
@@ -251,7 +251,7 @@
                 {
                     var excludedIds = similarListings.Select(s => s.Id).Concat(new[] { Id }).ToList();
                     var padListings = await DbContext.Listings
-                        .Where(l => !excludedIds.Contains(l.Id))
+                        .Where(l => !excludedIds.Contains(l.Id) && (l.Status == "Active" || string.IsNullOrEmpty(l.Status)))
                         .OrderByDescending(l => l.DatePosted)
                         .Take(4 - similarListings.Count)
                         .ToListAsync();

@@ -45,6 +45,10 @@ namespace CampusKart.Data
         public string Location { get; set; } = "";
 
         [Required]
+        [StringLength(50)]
+        public string Status { get; set; } = "Active";
+
+        [Required]
         public DateTime DatePosted { get; set; } = DateTime.UtcNow;
     }
 }

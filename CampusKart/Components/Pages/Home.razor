@@ -204,9 +204,10 @@
         try
         {
             recentListings = await DbContext.Listings
-                .OrderByDescending(l => l.DatePosted)
-                .Take(3)
-                .ToListAsync();
+                 .Where(l => l.Status == "Active" || string.IsNullOrEmpty(l.Status))
+                 .OrderByDescending(l => l.DatePosted)
+                 .Take(3)
+                 .ToListAsync();
         }
         catch (Exception ex)
         {

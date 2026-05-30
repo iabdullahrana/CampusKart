@@ -181,9 +181,8 @@
             // Fetch seller details from identity user store matching the email parameter
             sellerUser = await DbContext.Users.FirstOrDefaultAsync(u => u.Email == Email);
             
-            // Query listings by this seller email address
             sellerListings = await DbContext.Listings
-                .Where(l => l.SellerEmail == Email)
+                .Where(l => l.SellerEmail == Email && (l.Status == "Active" || string.IsNullOrEmpty(l.Status)))
                 .OrderByDescending(l => l.DatePosted)
                 .ToListAsync();
 
