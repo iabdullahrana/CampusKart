@@ -1,0 +1,393 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@using System.Security.Claims
+
+<div class="admin-wrapper">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+        <div class="sidebar-header">
+            <a href="/admin" class="sidebar-brand">
+                <span class="material-symbols-outlined brand-icon">dashboard_customize</span>
+                <span class="brand-text">CampusKart Admin</span>
+            </a>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="admin" class="nav-item @(IsActive("") ? "active" : "")">
+                <span class="material-symbols-outlined">dashboard</span>
+                <span>Dashboard</span>
+            </a>
+            <a href="admin/users" class="nav-item @(IsActive("users") ? "active" : "")">
+                <span class="material-symbols-outlined">group</span>
+                <span>Users</span>
+            </a>
+            <a href="admin/listings" class="nav-item @(IsActive("listings") ? "active" : "")">
+                <span class="material-symbols-outlined">sell</span>
+                <span>Listings</span>
+            </a>
+            <a href="admin/reports" class="nav-item @(IsActive("reports") ? "active" : "")">
+                <span class="material-symbols-outlined">flag</span>
+                <span>Reports</span>
+                @if (pendingReportsCount > 0)
+                {
+                    <span class="badge bg-danger rounded-pill ms-auto">@pendingReportsCount</span>
+                }
+            </a>
+            <a href="/" class="nav-item return-home mt-5">
+                <span class="material-symbols-outlined font-sm">arrow_back</span>
+                <span>Back to CampusKart</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="admin-profile">
+                <div class="profile-avatar">A</div>
+                <div class="profile-info">
+                    <span class="profile-name">@adminName</span>
+                    <span class="profile-role">System Administrator</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="admin-main">
+        <!-- Top Header -->
+        <header class="admin-header">
+            <div class="header-left">
+                <div class="search-box">
+                    <span class="material-symbols-outlined search-icon">search</span>
+                    <input type="text" placeholder="Search resources, listings..." class="search-input" />
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <div class="header-icon-btn position-relative">
+                    <span class="material-symbols-outlined">notifications</span>
+                    <span class="notification-dot"></span>
+                </div>
+                <div class="header-divider"></div>
+                <div class="user-badge">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill fw-semibold">Live Server</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Body -->
+        <main class="admin-body">
+            @Body
+        </main>
+    </div>
+</div>
+
+<style>
+    .admin-wrapper {
+        display: flex;
+        min-height: 100vh;
+        background-color: #f8fafc;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    .admin-sidebar {
+        width: 280px;
+        background-color: #0f172a;
+        color: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 100;
+        box-shadow: 4px 0 10px rgba(0, 0, 0, 0.05);
+        border-right: 1px solid #1e293b;
+    }
+
+    .sidebar-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #1e293b;
+    }
+
+    .sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: #ffffff;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 1.2rem;
+    }
+
+    .brand-icon {
+        color: #3b82f6;
+        font-size: 1.8rem;
+    }
+
+    .sidebar-nav {
+        padding: 1.5rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        flex-grow: 1;
+    }
+
+    .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        color: #94a3b8;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .nav-item:hover {
+        background-color: #1e293b;
+        color: #ffffff;
+    }
+
+    .nav-item.active {
+        background-color: #3b82f6;
+        color: #ffffff;
+        font-weight: 600;
+    }
+
+    .return-home {
+        border-top: 1px solid #1e293b;
+        padding-top: 1.5rem;
+        margin-top: auto !important;
+        font-size: 0.9rem;
+    }
+
+    .sidebar-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #1e293b;
+        background-color: #0b0f19;
+    }
+
+    .admin-profile {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .profile-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #3b82f6;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+
+    .profile-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .profile-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #ffffff;
+    }
+
+    .profile-role {
+        font-size: 0.75rem;
+        color: #64748b;
+    }
+
+    /* Main Content */
+    .admin-main {
+        margin-left: 280px;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .admin-header {
+        height: 70px;
+        background-color: #ffffff;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 2rem;
+        position: sticky;
+        top: 0;
+        z-index: 90;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+    }
+
+    .search-box {
+        position: relative;
+        width: 320px;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 0.5rem 1rem 0.5rem 2.5rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+
+    .search-input:focus {
+        border-color: #3b82f6;
+    }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .header-icon-btn {
+        background: none;
+        border: none;
+        color: #64748b;
+        cursor: pointer;
+        padding: 0.5rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s;
+    }
+
+    .header-icon-btn:hover {
+        background-color: #f1f5f9;
+        color: #0f172a;
+    }
+
+    .notification-dot {
+        width: 8px;
+        height: 8px;
+        background-color: #ef4444;
+        border-radius: 50%;
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        border: 2px solid #ffffff;
+    }
+
+    .header-divider {
+        width: 1px;
+        height: 24px;
+        background-color: #e2e8f0;
+    }
+
+    .admin-body {
+        padding: 2rem;
+        flex-grow: 1;
+    }
+
+    /* Common Card Styling for Admin pages */
+    .admin-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Media query to collapse sidebar */
+    @@media (max-width: 992px) {
+        .admin-sidebar {
+            width: 70px;
+        }
+        .sidebar-brand .brand-text, 
+        .nav-item span:not(.material-symbols-outlined),
+        .profile-info {
+            display: none;
+        }
+        .admin-main {
+            margin-left: 70px;
+        }
+        .sidebar-footer {
+            padding: 1rem 0.5rem;
+            justify-content: center;
+        }
+        .admin-profile {
+            justify-content: center;
+        }
+        .nav-item {
+            justify-content: center;
+            padding: 0.75rem;
+        }
+    }
+</style>
+
+@code {
+    private string adminName = "Admin User";
+    private int pendingReportsCount = 0;
+    private string currentUrl = "";
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? GetAuthenticationStateAsync { get; set; }
+
+    [Inject]
+    private CampusKart.Data.ApplicationDbContext DbContext { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
+        Navigation.LocationChanged += OnLocationChanged;
+
+        if (GetAuthenticationStateAsync != null)
+        {
+            var authState = await GetAuthenticationStateAsync;
+            var user = authState.User;
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                adminName = user.Identity.Name ?? "Admin";
+            }
+        }
+
+        try
+        {
+            pendingReportsCount = DbContext.Reports.Count(r => r.Status == "Pending");
+        }
+        catch
+        {
+            // Fallback for safety during setup
+            pendingReportsCount = 0;
+        }
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = Navigation.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    private bool IsActive(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return currentUrl == "admin" || currentUrl == "admin/";
+        }
+        return currentUrl.StartsWith($"admin/{path}", StringComparison.OrdinalIgnoreCase);
+    }
+}

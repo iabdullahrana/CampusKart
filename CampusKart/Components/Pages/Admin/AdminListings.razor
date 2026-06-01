@@ -1,0 +1,284 @@
+@page "/admin/listings"
+@layout Layout.AdminLayout
+@using CampusKart.Data
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+
+<PageTitle>Listings Management - CampusKart</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h2 fw-bold text-dark mb-1">Listings Management</h1>
+        <p class="text-muted mb-0">Audit, remove, or restore marketplace items posted by student sellers.</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card border border-light rounded-4 p-3 shadow-sm mb-4 bg-white">
+    <div class="row g-3 align-items-center justify-content-between">
+        <div class="col-md-auto d-flex align-items-center gap-3">
+            <span class="text-muted fw-semibold">Status:</span>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm @(statusFilter == "All" ? "btn-primary" : "btn-light") px-3 fw-semibold" @onclick='() => ChangeStatusFilter("All")'>All</button>
+                <button type="button" class="btn btn-sm @(statusFilter == "Active" ? "btn-primary" : "btn-light") px-3 fw-semibold" @onclick='() => ChangeStatusFilter("Active")'>Active</button>
+                <button type="button" class="btn btn-sm @(statusFilter == "Removed" ? "btn-primary" : "btn-light") px-3 fw-semibold" @onclick='() => ChangeStatusFilter("Removed")'>Removed</button>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="search-box position-relative">
+                <span class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y ms-3 text-muted">search</span>
+                <input type="text" class="form-control ps-5 rounded-pill border-light" placeholder="Search title, category, seller..." @bind-value="searchText" @bind-value:event="oninput" />
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Listings Table -->
+<div class="admin-card shadow-sm bg-white border border-light">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Item Details</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Seller</th>
+                    <th>Posted Date</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (listingsList == null)
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading listings...</span>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else if (!filteredListings.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <span class="material-symbols-outlined fs-2 mb-2">production_quantity_limits</span>
+                            <p class="mb-0">No listings found matching your criteria.</p>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var item in filteredListings)
+                    {
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-3">
+                                    @if (!string.IsNullOrEmpty(item.ImageUrl))
+                                    {
+                                        <img src="@item.ImageUrl" alt="" class="rounded border shadow-sm" style="width: 48px; height: 48px; object-fit: cover;" />
+                                    }
+                                    else
+                                    {
+                                        <div class="rounded bg-light border d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                                            <span class="material-symbols-outlined text-muted">image</span>
+                                        </div>
+                                    }
+                                    <div>
+                                        <div class="fw-bold text-dark text-truncate" style="max-width: 200px;" title="@item.Title">@item.Title</div>
+                                        <span class="text-muted font-xs">ID: @item.Id</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border px-2.5 py-1">@item.Category</span>
+                            </td>
+                            <td>
+                                <span class="fw-bold text-primary">$@item.Price</span>
+                            </td>
+                            <td>
+                                <div>
+                                    <div class="small fw-semibold text-dark">@item.SellerName</div>
+                                    <div class="text-muted small">@item.SellerEmail</div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="small text-muted">@item.DatePosted.ToString("yyyy-MM-dd")</span>
+                            </td>
+                            <td>
+                                @if (item.Status == "Active")
+                                {
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill">Active</span>
+                                }
+                                else if (item.Status == "Removed")
+                                {
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill">Removed</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 rounded-pill">@item.Status</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex gap-2 justify-content-end">
+                                    @if (item.Status == "Active")
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger fw-semibold" @onclick="() => ToggleListingStatus(item)">
+                                            Remove
+                                        </button>
+                                    }
+                                    else if (item.Status == "Removed")
+                                    {
+                                        <button class="btn btn-sm btn-outline-success fw-semibold" @onclick="() => ToggleListingStatus(item)">
+                                            Restore
+                                        </button>
+                                    }
+                                    <button class="btn btn-sm btn-light text-danger border border-light" @onclick="() => ConfirmDelete(item)" title="Permanently Delete">
+                                        <span class="material-symbols-outlined font-sm">delete</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Permanent Delete Modal -->
+@if (itemToDelete != null)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show d-block" tabindex="-1" style="z-index: 1055;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-0 bg-danger text-white rounded-top-4 py-3">
+                    <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                        <span class="material-symbols-outlined">warning</span>
+                        Confirm Permanent Deletion
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <p class="text-dark mb-1 fs-5 fw-semibold">Are you sure you want to permanently delete this listing?</p>
+                    <p class="text-danger fw-bold mb-3">@itemToDelete.Title</p>
+                    <p class="text-muted small mb-0">This action is irreversible. All linked messages, reports, and photos associated with this item will no longer match.</p>
+                </div>
+                <div class="modal-footer border-0 p-3 bg-light rounded-bottom-4 justify-content-between">
+                    <button type="button" class="btn btn-light fw-bold px-4" @onclick="CancelDelete">Cancel</button>
+                    <button type="button" class="btn btn-danger fw-bold px-4" @onclick="DeleteListing">Permanently Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .font-sm {
+        font-size: 1.1rem;
+    }
+    .font-xs {
+        font-size: 0.75rem;
+    }
+</style>
+
+@code {
+    private List<Listing>? listingsList;
+    private string searchText = "";
+    private string statusFilter = "All";
+    private Listing? itemToDelete;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadListings();
+    }
+
+    private async Task LoadListings()
+    {
+        listingsList = await DbContext.Listings
+            .OrderByDescending(l => l.DatePosted)
+            .ToListAsync();
+    }
+
+    private void ChangeStatusFilter(string filter)
+    {
+        statusFilter = filter;
+    }
+
+    private List<Listing> filteredListings
+    {
+        get
+        {
+            if (listingsList == null) return new();
+
+            var query = listingsList.AsEnumerable();
+
+            // Status filter
+            if (statusFilter == "Active")
+            {
+                query = query.Where(l => l.Status == "Active");
+            }
+            else if (statusFilter == "Removed")
+            {
+                query = query.Where(l => l.Status == "Removed");
+            }
+
+            // Search text filter
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                var term = searchText.Trim();
+                query = query.Where(l =>
+                    l.Title.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    l.Category.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    l.SellerName.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    l.SellerEmail.Contains(term, StringComparison.OrdinalIgnoreCase)
+                );
+            }
+
+            return query.ToList();
+        }
+    }
+
+    private async Task ToggleListingStatus(Listing item)
+    {
+        var dbItem = await DbContext.Listings.FindAsync(item.Id);
+        if (dbItem != null)
+        {
+            dbItem.Status = dbItem.Status == "Active" ? "Removed" : "Active";
+            await DbContext.SaveChangesAsync();
+            await LoadListings();
+        }
+    }
+
+    private void ConfirmDelete(Listing item)
+    {
+        itemToDelete = item;
+    }
+
+    private void CancelDelete()
+    {
+        itemToDelete = null;
+    }
+
+    private async Task DeleteListing()
+    {
+        if (itemToDelete != null)
+        {
+            var dbItem = await DbContext.Listings.FindAsync(itemToDelete.Id);
+            if (dbItem != null)
+            {
+                // Also remove any flagged reports associated with this listing
+                var linkedReports = await DbContext.Reports.Where(r => r.ListingId == dbItem.Id).ToListAsync();
+                DbContext.Reports.RemoveRange(linkedReports);
+
+                DbContext.Listings.Remove(dbItem);
+                await DbContext.SaveChangesAsync();
+            }
+            itemToDelete = null;
+            await LoadListings();
+        }
+    }
+}

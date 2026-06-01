@@ -19,6 +19,9 @@
                         <Authorized>
                             <a class="@GetNavLinkClass("messages")" href="messages">Messages</a>
                             <a class="@GetNavLinkClass("listings")" href="listings">Your Listing</a>
+                            <a class="@GetNavLinkClass("admin")" href="admin" style="color: #3b82f6 !important; font-weight: 700;">
+                                <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 2px;">admin_panel_settings</span>Admin
+                            </a>
                             
                             <!-- Classical Profile Circle & Dropdown Popup (Pure CSS for Static SSR) -->
                             <div class="position-relative">
@@ -91,6 +94,9 @@
                         <Authorized>
                             <a class="@GetMobileNavLinkClass("messages")" href="messages" @onclick="ToggleMobileMenu">Messages</a>
                             <a class="@GetMobileNavLinkClass("listings")" href="listings" @onclick="ToggleMobileMenu">Your Listing</a>
+                            <a class="@GetMobileNavLinkClass("admin")" href="admin" @onclick="ToggleMobileMenu" style="color: #3b82f6 !important; font-weight: 700;">
+                                <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">admin_panel_settings</span>Admin Panel
+                            </a>
                             
                             <!-- Mobile Profile Summary with Logout POST -->
                             <div class="bg-ck-accent-section p-3 rounded-3 mt-2 d-flex flex-column gap-3">

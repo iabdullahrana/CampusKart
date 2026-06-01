@@ -7,5 +7,6 @@ namespace CampusKart.Data
     {
         public DbSet<Listing> Listings { get; set; }
         public DbSet<Message> Messages { get; set; }
+        public DbSet<Report> Reports { get; set; }
     }
 }
