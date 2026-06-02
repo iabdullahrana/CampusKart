@@ -1,0 +1,282 @@
+@page "/admin/reports"
+@layout Layout.AdminLayout
+@using CampusKart.Data
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+
+<PageTitle>Flagged Reports Management - CampusKart</PageTitle>
+
+<div class="mb-4">
+    <h1 class="h2 fw-bold text-dark mb-1">Reports Management</h1>
+    <p class="text-muted">Review, approve, or dismiss reports flagged by campus users.</p>
+</div>
+
+<!-- Filters and Actions Topbar -->
+<div class="card border border-light rounded-4 p-3 shadow-sm mb-4 bg-white">
+    <div class="row g-3 align-items-center justify-content-between">
+        <div class="col-md-auto">
+            <div class="btn-group" role="group">
+                <button type="button" class="btn @(currentTab == "All" ? "btn-primary" : "btn-light") px-3 fw-semibold" @onclick='() => ChangeTab("All")'>
+                    All Reports
+                    <span class="badge bg-secondary-subtle text-secondary ms-1">@allCount</span>
+                </button>
+                <button type="button" class="btn @(currentTab == "Pending" ? "btn-primary" : "btn-light") px-3 fw-semibold" @onclick='() => ChangeTab("Pending")'>
+                    Pending
+                    <span class="badge @(pendingCount > 0 ? "bg-danger" : "bg-secondary-subtle text-secondary") ms-1">@pendingCount</span>
+                </button>
+                <button type="button" class="btn @(currentTab == "Resolved" ? "btn-primary" : "btn-light") px-3 fw-semibold" @onclick='() => ChangeTab("Resolved")'>
+                    Resolved
+                    <span class="badge bg-secondary-subtle text-secondary ms-1">@resolvedCount</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="search-box position-relative">
+                <span class="material-symbols-outlined position-absolute top-50 start-0 translate-middle-y ms-3 text-muted">search</span>
+                <input type="text" class="form-control ps-5 rounded-pill border-light" placeholder="Search listing, reason..." @bind-value="searchText" @bind-value:event="oninput" />
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reports Grid -->
+@if (filteredReports == null)
+{
+    <div class="d-flex justify-content-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading reports...</span>
+        </div>
+    </div>
+}
+else if (!filteredReports.Any())
+{
+    <div class="admin-card text-center py-5 shadow-sm">
+        <span class="material-symbols-outlined fs-1 text-muted mb-3">flag_circle</span>
+        <h4 class="fw-bold text-dark">No Reports Found</h4>
+        <p class="text-muted mb-0">Everything looks clean. There are no reports matching your filters.</p>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        @foreach (var report in filteredReports)
+        {
+            <div class="col-lg-6">
+                <div class="admin-card report-card shadow-sm h-100 position-relative border-start border-4 @(report.Status == "Pending" ? "border-start-warning" : "border-start-secondary")">
+                    <!-- Report Header -->
+                    <div class="d-flex align-items-start justify-content-between mb-3">
+                        <div>
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">@report.Reason</span>
+                                <span class="badge @(report.Status == "Pending" ? "bg-warning text-dark" : "bg-secondary text-white")">@report.Status</span>
+                            </div>
+                            <h4 class="report-listing-title mb-0">@report.ListingTitle</h4>
+                            <span class="report-date">Reported on @report.ReportedDate.ToString("MMMM dd, yyyy")</span>
+                        </div>
+                        
+                        @if (!string.IsNullOrEmpty(report.ListingImageUrl))
+                        {
+                            <img src="@report.ListingImageUrl" alt="Listing Image" class="report-img rounded border" />
+                        }
+                    </div>
+
+                    <!-- Report Body -->
+                    <div class="report-description bg-light p-3 rounded-3 mb-3">
+                        <p class="mb-0 text-dark">@report.Description</p>
+                    </div>
+
+                    <!-- Reporter info -->
+                    <div class="reporter-info mb-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="material-symbols-outlined text-muted font-sm">person</span>
+                            <span class="fw-semibold small">Flagged by: @report.ReporterName</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <span class="material-symbols-outlined text-muted font-sm">mail</span>
+                            <span class="text-muted small">@report.ReporterEmail</span>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex gap-2 justify-content-end border-top pt-3 mt-auto">
+                        @if (report.Status == "Pending")
+                        {
+                            <button class="btn btn-sm btn-outline-secondary fw-semibold px-3" @onclick="() => DismissReport(report)">
+                                Dismiss Report
+                            </button>
+                            <button class="btn btn-sm btn-danger fw-semibold px-3 d-flex align-items-center gap-1" @onclick="() => ApproveAndRemove(report)">
+                                <span class="material-symbols-outlined font-sm">delete</span>
+                                Approve & Remove
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-light fw-semibold text-muted px-3" disabled>
+                                Resolved on @report.ResolvedDate?.ToString("MMMM dd")
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<style>
+    .report-card {
+        display: flex;
+        flex-direction: column;
+        background: #ffffff;
+    }
+
+    .border-start-warning {
+        border-left-color: #f59e0b !important;
+    }
+
+    .border-start-secondary {
+        border-left-color: #64748b !important;
+    }
+
+    .report-listing-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-top: 0.5rem;
+    }
+
+    .report-date {
+        font-size: 0.75rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    .report-img {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+    }
+
+    .report-description {
+        font-size: 0.85rem;
+        line-height: 1.5;
+        border: 1px solid #f1f5f9;
+    }
+
+    .reporter-info {
+        background-color: #faf5ff;
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        border: 1px dashed #e8dbfc;
+    }
+
+    .font-sm {
+        font-size: 1.1rem;
+    }
+</style>
+
+@code {
+    private List<Report>? allReports;
+    private string currentTab = "All";
+    private string searchText = "";
+
+    private int allCount = 0;
+    private int pendingCount = 0;
+    private int resolvedCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadReports();
+    }
+
+    private async Task LoadReports()
+    {
+        allReports = await DbContext.Reports
+            .OrderByDescending(r => r.ReportedDate)
+            .ToListAsync();
+
+        UpdateCounts();
+    }
+
+    private void UpdateCounts()
+    {
+        if (allReports == null) return;
+        allCount = allReports.Count;
+        pendingCount = allReports.Count(r => r.Status == "Pending");
+        resolvedCount = allReports.Count(r => r.Status == "Resolved");
+    }
+
+    private void ChangeTab(string tab)
+    {
+        currentTab = tab;
+    }
+
+    private List<Report> filteredReports
+    {
+        get
+        {
+            if (allReports == null) return new();
+
+            var query = allReports.AsEnumerable();
+
+            // Apply Tab filter
+            if (currentTab == "Pending")
+            {
+                query = query.Where(r => r.Status == "Pending");
+            }
+            else if (currentTab == "Resolved")
+            {
+                query = query.Where(r => r.Status == "Resolved");
+            }
+
+            // Apply Search text filter
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                var term = searchText.Trim();
+                query = query.Where(r => 
+                    r.ListingTitle.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    r.Reason.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    r.Description.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    r.ReporterName.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    r.ReporterEmail.Contains(term, StringComparison.OrdinalIgnoreCase)
+                );
+            }
+
+            return query.ToList();
+        }
+    }
+
+    private async Task DismissReport(Report report)
+    {
+        var dbReport = await DbContext.Reports.FindAsync(report.Id);
+        if (dbReport != null)
+        {
+            dbReport.Status = "Resolved";
+            dbReport.ResolvedDate = DateTime.UtcNow;
+            await DbContext.SaveChangesAsync();
+            await LoadReports();
+        }
+    }
+
+    private async Task ApproveAndRemove(Report report)
+    {
+        // Find report
+        var dbReport = await DbContext.Reports.FindAsync(report.Id);
+        if (dbReport != null)
+        {
+            dbReport.Status = "Resolved";
+            dbReport.ResolvedDate = DateTime.UtcNow;
+
+            // Find listing and set status = "Removed"
+            var listing = await DbContext.Listings.FindAsync(report.ListingId);
+            if (listing != null)
+            {
+                listing.Status = "Removed";
+            }
+
+            await DbContext.SaveChangesAsync();
+            await LoadReports();
+        }
+    }
+}

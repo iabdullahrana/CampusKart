@@ -6,5 +6,7 @@ namespace CampusKart.Data
     public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : IdentityDbContext<ApplicationUser>(options)
     {
         public DbSet<Listing> Listings { get; set; }
+        public DbSet<Message> Messages { get; set; }
+        public DbSet<Report> Reports { get; set; }
     }
 }

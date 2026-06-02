@@ -1,0 +1,623 @@
+@page "/admin"
+@layout Layout.AdminLayout
+@using CampusKart.Data
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+@inject UserManager<ApplicationUser> UserManager
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Admin Dashboard - CampusKart</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h2 fw-bold text-dark mb-1">Dashboard</h1>
+        <p class="text-muted mb-0">Overview of CampusKart database stats, recent listings, and activities.</p>
+    </div>
+    <div>
+        <button class="btn btn-outline-primary d-flex align-items-center gap-2 fw-semibold" @onclick="RefreshData">
+            <span class="material-symbols-outlined">refresh</span>
+            Refresh Stats
+        </button>
+    </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="dashboard-stat-card shadow-sm">
+            <div class="stat-icon-wrapper bg-primary-subtle text-primary">
+                <span class="material-symbols-outlined">group</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-number">@totalUsers</h3>
+                <p class="stat-label">Total Users</p>
+            </div>
+            <span class="stat-trend text-success"><span class="material-symbols-outlined font-sm">trending_up</span> +12%</span>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="dashboard-stat-card shadow-sm">
+            <div class="stat-icon-wrapper bg-success-subtle text-success">
+                <span class="material-symbols-outlined">sell</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-number">@totalListings</h3>
+                <p class="stat-label">Total Listings</p>
+            </div>
+            <span class="stat-trend text-success"><span class="material-symbols-outlined font-sm">trending_up</span> +8%</span>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="dashboard-stat-card shadow-sm">
+            <div class="stat-icon-wrapper bg-info-subtle text-info">
+                <span class="material-symbols-outlined">playlist_add_check</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-number">@activeListings</h3>
+                <p class="stat-label">Active Listings</p>
+            </div>
+            <span class="stat-trend text-secondary">Current</span>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="dashboard-stat-card shadow-sm">
+            <div class="stat-icon-wrapper bg-danger-subtle text-danger">
+                <span class="material-symbols-outlined">report</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-number">@pendingReports</h3>
+                <p class="stat-label">Pending Reports</p>
+            </div>
+            @if (pendingReports > 0)
+            {
+                <span class="stat-trend text-danger fw-bold">Action Needed</span>
+            }
+            else
+            {
+                <span class="stat-trend text-success">Clear</span>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Chart Column -->
+    <div class="col-lg-7">
+        <div class="admin-card h-100 shadow-sm">
+            <h3 class="card-title-lg mb-4">Weekly Listings Submissions</h3>
+            <div class="chart-container">
+                @if (chartData != null && chartData.Any())
+                {
+                    var maxCount = Math.Max(chartData.Max(d => d.Count), 1);
+                    <div class="bar-chart">
+                        @foreach (var day in chartData)
+                        {
+                            var heightPercent = (double)day.Count / maxCount * 100;
+                            // Ensure at least a minimal height for 0 count to show line/indicator
+                            var minHeight = heightPercent < 4 ? "4%" : $"{heightPercent}%";
+                            
+                            <div class="chart-bar-col">
+                                <div class="bar-wrapper">
+                                    <div class="bar-tooltip">@day.Count submissions</div>
+                                    <div class="chart-bar bg-primary" style="height: @minHeight;"></div>
+                                </div>
+                                <span class="bar-label">@day.DateLabel</span>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5 text-muted">
+                        <span class="material-symbols-outlined fs-1 mb-2">bar_chart</span>
+                        <p>No activity data available for the last 7 days</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions Column -->
+    <div class="col-lg-5">
+        <div class="admin-card h-100 shadow-sm">
+            <h3 class="card-title-lg mb-3">Quick Management Actions</h3>
+            <div class="actions-grid">
+                <button class="action-btn-card" @onclick="ShowAddModModal">
+                    <span class="material-symbols-outlined btn-icon text-primary">security</span>
+                    <span class="btn-text">Add Moderator</span>
+                </button>
+                <button class="action-btn-card" @onclick="ShowBroadcastModal">
+                    <span class="material-symbols-outlined btn-icon text-success">campaign</span>
+                    <span class="btn-text">Send Broadcast</span>
+                </button>
+                <a href="admin/reports" class="action-btn-card text-decoration-none">
+                    <span class="material-symbols-outlined btn-icon text-danger">gavel</span>
+                    <span class="btn-text">Review Reports</span>
+                </a>
+                <button class="action-btn-card" @onclick="ExportListingsCsv">
+                    <span class="material-symbols-outlined btn-icon text-info">download</span>
+                    <span class="btn-text">Export Listings CSV</span>
+                </button>
+            </div>
+
+            <!-- Mock Actions Form Area -->
+            @if (activeAction == "moderator")
+            {
+                <div class="action-form-panel mt-3 p-3 bg-light rounded-3 animate-fade-in">
+                    <h5 class="fw-bold mb-2 small text-uppercase tracking-wider">Add Moderator</h5>
+                    <div class="input-group input-group-sm mb-2">
+                        <input type="email" placeholder="user@student.edu" @bind="modEmail" class="form-control" />
+                        <button class="btn btn-primary" type="button" @onclick="AssignModRole">Assign</button>
+                    </div>
+                    @if (!string.IsNullOrEmpty(actionMessage))
+                    {
+                        <div class="alert alert-success py-1 px-2 small mb-0 mt-1">@actionMessage</div>
+                    }
+                </div>
+            }
+            else if (activeAction == "broadcast")
+            {
+                <div class="action-form-panel mt-3 p-3 bg-light rounded-3 animate-fade-in">
+                    <h5 class="fw-bold mb-2 small text-uppercase tracking-wider">Send Broadcast Message</h5>
+                    <textarea class="form-control form-control-sm mb-2" rows="2" placeholder="Enter system announcement..." @bind="broadcastMsg"></textarea>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">Will display in user mailboxes</span>
+                        <button class="btn btn-sm btn-success" @onclick="SendSystemBroadcast">Broadcast</button>
+                    </div>
+                    @if (!string.IsNullOrEmpty(actionMessage))
+                    {
+                        <div class="alert alert-success py-1 px-2 small mb-0 mt-1">@actionMessage</div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Recent Activity Feed -->
+    <div class="col-lg-6">
+        <div class="admin-card shadow-sm h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="card-title-lg m-0">Recent Listings</h3>
+                <a href="admin/listings" class="btn btn-sm btn-link text-decoration-none fw-semibold">View All</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Seller</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (recentListings != null && recentListings.Any())
+                        {
+                            @foreach (var item in recentListings)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            @if (!string.IsNullOrEmpty(item.ImageUrl))
+                                            {
+                                                <img src="@item.ImageUrl" alt="" class="rounded border" style="width: 36px; height: 36px; object-fit: cover;" />
+                                            }
+                                            else
+                                            {
+                                                <div class="rounded bg-light border d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                                                    <span class="material-symbols-outlined font-sm">image</span>
+                                                </div>
+                                            }
+                                            <span class="text-truncate fw-semibold" style="max-width: 140px;" title="@item.Title">@item.Title</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="small text-dark text-truncate" style="max-width: 120px;" title="@item.SellerEmail">@item.SellerName</div>
+                                    </td>
+                                    <td><span class="fw-bold text-primary">$@item.Price</span></td>
+                                    <td>
+                                        @if (item.Status == "Active")
+                                        {
+                                            <span class="badge bg-success-subtle text-success">Active</span>
+                                        }
+                                        else if (item.Status == "Removed")
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger">Removed</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning-subtle text-warning">@item.Status</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">No recent listings found</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Reports Feed -->
+    <div class="col-lg-6">
+        <div class="admin-card shadow-sm h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="card-title-lg m-0">Recent Reports</h3>
+                <a href="admin/reports" class="btn btn-sm btn-link text-decoration-none fw-semibold">View All</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Reported Item</th>
+                            <th>Reason</th>
+                            <th>Reporter</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (recentReports != null && recentReports.Any())
+                        {
+                            @foreach (var r in recentReports)
+                            {
+                                <tr>
+                                    <td>
+                                        <span class="fw-semibold text-truncate d-block" style="max-width: 150px;" title="@r.ListingTitle">@r.ListingTitle</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-danger-subtle text-danger px-2 py-1">@r.Reason</span>
+                                    </td>
+                                    <td>
+                                        <span class="small text-muted">@r.ReporterName</span>
+                                    </td>
+                                    <td>
+                                        @if (r.Status == "Pending")
+                                        {
+                                            <span class="badge bg-warning text-dark">Pending</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Resolved</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">No reports filed recently</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dashboard-stat-card {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-icon-wrapper {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .stat-icon-wrapper span {
+        font-size: 1.8rem;
+    }
+
+    .stat-content {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+    }
+
+    .stat-number {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin: 0;
+        font-weight: 500;
+    }
+
+    .stat-trend {
+        position: absolute;
+        bottom: 12px;
+        right: 16px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .card-title-lg {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .chart-container {
+        height: 220px;
+        position: relative;
+    }
+
+    .bar-chart {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        height: 100%;
+        padding-top: 1.5rem;
+        padding-bottom: 0.5rem;
+        gap: 0.5rem;
+    }
+
+    .chart-bar-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex-grow: 1;
+        height: 100%;
+        justify-content: flex-end;
+    }
+
+    .bar-wrapper {
+        width: 100%;
+        max-width: 36px;
+        height: 100%;
+        display: flex;
+        align-items: flex-end;
+        position: relative;
+    }
+
+    .chart-bar {
+        width: 100%;
+        border-radius: 6px 6px 0 0;
+        background-color: #3b82f6 !important;
+        transition: height 0.4s ease, opacity 0.2s;
+    }
+
+    .chart-bar:hover {
+        background-color: #2563eb !important;
+        cursor: pointer;
+    }
+
+    .bar-wrapper:hover .bar-tooltip {
+        opacity: 1;
+        visibility: visible;
+        transform: translate(-50%, -8px);
+    }
+
+    .bar-tooltip {
+        position: absolute;
+        top: -30px;
+        left: 50%;
+        transform: translate(-50%, 0px);
+        background-color: #0f172a;
+        color: #ffffff;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        white-space: nowrap;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s ease;
+        z-index: 10;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .bar-label {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-top: 0.5rem;
+        font-weight: 500;
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    .action-btn-card {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .action-btn-card:hover {
+        background-color: #ffffff;
+        border-color: #cbd5e1;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        transform: translateY(-2px);
+    }
+
+    .btn-icon {
+        font-size: 1.6rem;
+    }
+
+    .btn-text {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #334155;
+    }
+
+    .font-sm {
+        font-size: 0.9rem;
+    }
+
+    /* Animation */
+    .animate-fade-in {
+        animation: fadeIn 0.25s ease-out forwards;
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+@code {
+    private int totalUsers = 0;
+    private int totalListings = 0;
+    private int activeListings = 0;
+    private int pendingReports = 0;
+
+    private List<Listing> recentListings = new();
+    private List<Report> recentReports = new();
+    private List<ChartDataPoint> chartData = new();
+
+    private string activeAction = "";
+    private string modEmail = "";
+    private string broadcastMsg = "";
+    private string actionMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStats();
+    }
+
+    private async Task LoadStats()
+    {
+        totalUsers = await UserManager.Users.CountAsync();
+        totalListings = await DbContext.Listings.CountAsync();
+        activeListings = await DbContext.Listings.CountAsync(l => l.Status == "Active");
+        pendingReports = await DbContext.Reports.CountAsync(r => r.Status == "Pending");
+
+        recentListings = await DbContext.Listings
+            .OrderByDescending(l => l.DatePosted)
+            .Take(5)
+            .ToListAsync();
+
+        recentReports = await DbContext.Reports
+            .OrderByDescending(r => r.ReportedDate)
+            .Take(5)
+            .ToListAsync();
+
+        // Build 7-day growth stats
+        chartData.Clear();
+        for (int i = 6; i >= 0; i--)
+        {
+            var date = DateTime.UtcNow.Date.AddDays(-i);
+            var nextDate = date.AddDays(1);
+            var label = date.ToString("ddd");
+            
+            var count = await DbContext.Listings
+                .CountAsync(l => l.DatePosted >= date && l.DatePosted < nextDate);
+
+            chartData.Add(new ChartDataPoint
+            {
+                DateLabel = label,
+                Count = count
+            });
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadStats();
+        StateHasChanged();
+    }
+
+    private void ShowAddModModal()
+    {
+        activeAction = activeAction == "moderator" ? "" : "moderator";
+        actionMessage = "";
+        modEmail = "";
+    }
+
+    private void ShowBroadcastModal()
+    {
+        activeAction = activeAction == "broadcast" ? "" : "broadcast";
+        actionMessage = "";
+        broadcastMsg = "";
+    }
+
+    private void AssignModRole()
+    {
+        if (string.IsNullOrWhiteSpace(modEmail)) return;
+        actionMessage = $"Role Assigned: {modEmail} is now a moderator!";
+        modEmail = "";
+    }
+
+    private void SendSystemBroadcast()
+    {
+        if (string.IsNullOrWhiteSpace(broadcastMsg)) return;
+        actionMessage = "Broadcast message dispatched successfully to all active students.";
+        broadcastMsg = "";
+    }
+
+    private async Task ExportListingsCsv()
+    {
+        var listings = await DbContext.Listings.ToListAsync();
+        
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("ID,Title,Category,Price,SellerName,SellerEmail,Location,Status,DatePosted");
+
+        foreach (var l in listings)
+        {
+            // Escape values
+            var title = l.Title.Replace("\"", "\"\"");
+            var category = l.Category.Replace("\"", "\"\"");
+            var sellerName = l.SellerName.Replace("\"", "\"\"");
+            var sellerEmail = l.SellerEmail.Replace("\"", "\"\"");
+            var location = l.Location.Replace("\"", "\"\"");
+            
+            sb.AppendLine($"{l.Id},\"{title}\",\"{category}\",{l.Price},\"{sellerName}\",\"{sellerEmail}\",\"{location}\",\"{l.Status}\",\"{l.DatePosted:yyyy-MM-dd HH:mm:ss}\"");
+        }
+
+        var csvContent = sb.ToString();
+        var filename = $"CampusKart_Listings_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+        
+        await JSRuntime.InvokeVoidAsync("downloadFile", filename, "text/csv", csvContent);
+    }
+
+    public class ChartDataPoint
+    {
+        public string DateLabel { get; set; } = "";
+        public int Count { get; set; }
+    }
+}
