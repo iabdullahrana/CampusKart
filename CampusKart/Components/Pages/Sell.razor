@@ -496,6 +496,10 @@
             await Task.Delay(3000);
             Navigation.NavigateTo("browse");
         }
+        catch (Microsoft.AspNetCore.Components.NavigationException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _dbError = ex.Message + (ex.InnerException != null ? " | Inner: " + ex.InnerException.Message : "");
