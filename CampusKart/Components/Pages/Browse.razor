@@ -124,7 +124,7 @@
                     <a href="listing/@item.Id" class="text-decoration-none text-dark d-block h-100">
                         <div class="ck-card h-100">
                             <div class="ck-card-img-wrapper">
-                                <img class="ck-card-img" src="@(item.ImageUrl.Contains(";") ? item.ImageUrl.Split(';')[0] : item.ImageUrl)" alt="@item.Title" />
+                                <img class="ck-card-img" src="@(!string.IsNullOrEmpty(item.ImageUrl) && item.ImageUrl.Contains(";") ? item.ImageUrl.Split(';')[0] : (item.ImageUrl ?? ""))" alt="@item.Title" />
                                 <span class="ck-badge">@item.Category</span>
                             </div>
                             <div class="ck-card-body d-flex flex-column h-100">
@@ -240,15 +240,16 @@
             // Search Filter (checks title, seller, and location)
             if (!string.IsNullOrWhiteSpace(activeSearchText))
             {
-                items = items.Where(i => i.Title.Contains(activeSearchText, StringComparison.OrdinalIgnoreCase) ||
-                                         i.SellerName.Contains(activeSearchText, StringComparison.OrdinalIgnoreCase) ||
-                                         i.Location.Contains(activeSearchText, StringComparison.OrdinalIgnoreCase));
+                items = items.Where(i => 
+                    (i.Title != null && i.Title.Contains(activeSearchText, StringComparison.OrdinalIgnoreCase)) ||
+                    (i.SellerName != null && i.SellerName.Contains(activeSearchText, StringComparison.OrdinalIgnoreCase)) ||
+                    (i.Location != null && i.Location.Contains(activeSearchText, StringComparison.OrdinalIgnoreCase)));
             }
 
             // Category Filter
             if (selectedCategory != "All")
             {
-                items = items.Where(i => i.Category.Equals(selectedCategory, StringComparison.OrdinalIgnoreCase));
+                items = items.Where(i => i.Category != null && i.Category.Equals(selectedCategory, StringComparison.OrdinalIgnoreCase));
             }
 
             // Price Cap Filter
