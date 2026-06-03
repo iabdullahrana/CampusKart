@@ -144,7 +144,7 @@
                             @if (selectedImagePreviews.Any())
                             {
                                 <div class="mt-3">
-                                    <label class="form-label fw-bold text-ck-secondary small mb-2">Selected Photos (@selectedFiles.Count / 5)</label>
+                                    <label class="form-label fw-bold text-ck-secondary small mb-2">Selected Photos (@selectedImagePreviews.Count / 5)</label>
                                     <div class="row row-cols-2 row-cols-sm-3 row-cols-md-5 g-2">
                                         @for (int i = 0; i < selectedImagePreviews.Count; i++)
                                         {
@@ -178,7 +178,7 @@
                             {
                                 <div class="d-flex align-items-center gap-2 mt-3 text-primary small justify-content-center">
                                     <div class="spinner-border spinner-border-sm" role="status"></div>
-                                    <span>Uploading @selectedFiles.Count images to Cloudinary CDN...</span>
+                                    <span>Uploading @selectedFilesData.Count images to Cloudinary CDN...</span>
                                 </div>
                             }
                             @if (!string.IsNullOrEmpty(imageUploadError))
@@ -253,12 +253,19 @@
                     <!-- Unified live preview card mirror -->
                     <div class="ck-card text-start">
                         <div class="ck-card-img-wrapper" style="height: 160px;">
-                            <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-light text-secondary">
-                                <span class="material-symbols-outlined fs-1 text-slate-400">@CategoryIcon</span>
-                                <span class="small fw-semibold mt-2 text-slate-500">
-                                    @(!string.IsNullOrEmpty(formModel.Category) ? formModel.Category : "Draft Item")
-                                </span>
-                            </div>
+                            @if (selectedImagePreviews.Any())
+                            {
+                                <img src="@selectedImagePreviews.First()" alt="Live Preview" class="w-100 h-100 object-fit-cover" />
+                            }
+                            else
+                            {
+                                <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-light text-secondary">
+                                    <span class="material-symbols-outlined fs-1 text-slate-400">@CategoryIcon</span>
+                                    <span class="small fw-semibold mt-2 text-slate-500">
+                                        @(!string.IsNullOrEmpty(formModel.Category) ? formModel.Category : "Draft Item")
+                                    </span>
+                                </div>
+                            }
                             <span class="ck-badge">@(!string.IsNullOrEmpty(formModel.Category) ? formModel.Category : "Category")</span>
                         </div>
                         <div class="ck-card-body d-flex flex-column h-100">
@@ -330,7 +337,7 @@
         _ => "photo_camera"
     };
 
-    private List<IBrowserFile> selectedFiles = new();
+    private List<(string FileName, byte[] Bytes, string ContentType)> selectedFilesData = new();
     private List<string> selectedImagePreviews = new();
     private bool isUploadingImage = false;
     private string? imageUploadError;
@@ -342,7 +349,7 @@
         
         foreach (var file in files)
         {
-            if (selectedFiles.Count >= 5)
+            if (selectedFilesData.Count >= 5)
             {
                 imageUploadError = "You can only select up to 5 product images.";
                 break;
@@ -354,31 +361,37 @@
                 continue;
             }
 
-            selectedFiles.Add(file);
-
-            // Generate an instant local preview using a base64 URL
+            // Generate preview & copy bytes in memory during the event lifecycle
             try
             {
-                var buffer = new byte[file.Size];
+                using var ms = new MemoryStream();
                 using (var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024))
                 {
-                    await stream.ReadAsync(buffer);
+                    await stream.CopyToAsync(ms);
                 }
+                var bytes = ms.ToArray();
+                selectedFilesData.Add((file.Name, bytes, file.ContentType));
+
                 var format = file.ContentType;
-                selectedImagePreviews.Add($"data:{format};base64,{Convert.ToBase64String(buffer)}");
+                selectedImagePreviews.Add($"data:{format};base64,{Convert.ToBase64String(bytes)}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error creating image preview: {ex.Message}");
+                var innerMsg = ex.InnerException != null ? $" | Inner: {ex.InnerException.Message}" : "";
+                imageUploadError = $"Failed to read '{file.Name}': {ex.Message}{innerMsg}";
+                Console.WriteLine($"Error reading file: {ex.Message}{innerMsg}");
             }
         }
     }
 
     private void RemoveSelectedImage(int index)
     {
-        if (index >= 0 && index < selectedFiles.Count)
+        if (index >= 0 && index < selectedFilesData.Count)
         {
-            selectedFiles.RemoveAt(index);
+            selectedFilesData.RemoveAt(index);
+        }
+        if (index >= 0 && index < selectedImagePreviews.Count)
+        {
             selectedImagePreviews.RemoveAt(index);
         }
         imageUploadError = null;
@@ -404,7 +417,7 @@
         var uploadedUrls = new List<string>();
 
         // If files are selected, process their cloud uploads sequentially
-        if (selectedFiles.Any())
+        if (selectedFilesData.Any())
         {
             if (CloudinaryService != null)
             {
@@ -412,13 +425,19 @@
                 StateHasChanged();
                 try
                 {
-                    foreach (var file in selectedFiles)
+                    var apiProp = typeof(CloudinaryDotNet.Cloudinary).GetProperty("Api", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                    var apiObj = apiProp?.GetValue(CloudinaryService);
+                    var clientField = typeof(CloudinaryDotNet.Api).GetField("Client", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                    var clientObj = clientField?.GetValue(apiObj);
+                    Console.WriteLine($">>> [Sell Page] CloudinaryService.Api.Client instance hash: {clientObj?.GetHashCode()}, Type: {clientObj?.GetType().FullName}");
+
+                    foreach (var fileData in selectedFilesData)
                     {
-                        using (var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024))
+                        using (var ms = new MemoryStream(fileData.Bytes))
                         {
                             var uploadParams = new CloudinaryDotNet.Actions.ImageUploadParams()
                             {
-                                File = new CloudinaryDotNet.FileDescription(file.Name, stream),
+                                File = new CloudinaryDotNet.FileDescription(fileData.FileName, ms),
                                 Folder = "campuskart_items",
                                 Transformation = new CloudinaryDotNet.Transformation().Quality("auto").FetchFormat("auto")
                             };
@@ -438,7 +457,9 @@
                 }
                 catch (Exception ex)
                 {
-                    imageUploadError = $"Cloudinary upload failed: {ex.Message}. Falling back to default mock category photo.";
+                    var innerMsg = ex.InnerException != null ? $" | Inner: {ex.InnerException.Message}" : "";
+                    imageUploadError = $"Cloudinary upload failed: {ex.Message}{innerMsg}. Falling back to default mock category photo.";
+                    Console.WriteLine($"Cloudinary upload failed: {ex}");
                 }
                 finally
                 {
@@ -489,8 +510,9 @@
             postedItemTitle = formModel.Title;
 
             // Reset the form model after posting
-            var oldTitle = formModel.Title;
             formModel = new();
+            selectedImagePreviews.Clear();
+            selectedFilesData.Clear();
 
             // Standby for 3 seconds, then navigate user directly to browse page to see their listings
             await Task.Delay(3000);

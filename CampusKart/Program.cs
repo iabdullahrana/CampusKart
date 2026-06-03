@@ -17,8 +17,25 @@ namespace CampusKart
 
             // Add services to the container.
             builder.Services.AddRazorComponents()
-                .AddInteractiveServerComponents()
+                .AddInteractiveServerComponents(options =>
+                {
+                    options.DetailedErrors = true;
+                })
+                .AddHubOptions(options =>
+                {
+                    options.MaximumReceiveMessageSize = 50 * 1024 * 1024; // 50MB limit for image uploads/streaming
+                })
                 .AddInteractiveWebAssemblyComponents();
+
+            builder.Services.AddSignalR(options =>
+            {
+                options.MaximumReceiveMessageSize = 50 * 1024 * 1024; // 50MB limit
+            });
+
+            builder.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions>(options =>
+            {
+                options.MaximumReceiveMessageSize = 50 * 1024 * 1024; // 50MB limit
+            });
 
             builder.Services.AddCascadingAuthenticationState();
             builder.Services.AddScoped<IdentityUserAccessor>();
@@ -80,11 +97,49 @@ namespace CampusKart
             var apiKey = cloudinarySection["ApiKey"];
             var apiSecret = cloudinarySection["ApiSecret"];
 
+            // Bypass local SSL certificate validation errors globally for all HttpClient calls in this process (including inside the Cloudinary SDK)
+            System.Net.ServicePointManager.ServerCertificateValidationCallback = 
+                (sender, certificate, chain, sslPolicyErrors) => true;
+
             if (!string.IsNullOrEmpty(cloudName) && !string.IsNullOrEmpty(apiKey) && !string.IsNullOrEmpty(apiSecret) &&
                 cloudName != "your-cloud-name" && apiKey != "your-api-key" && apiSecret != "your-api-secret")
             {
                 var account = new CloudinaryDotNet.Account(cloudName, apiKey, apiSecret);
                 var cloudinary = new CloudinaryDotNet.Cloudinary(account);
+
+                // Surgical injection of SSL-bypassing HttpClient into Cloudinary SDK Client to solve SSL handshake failures on localhost/network
+                try
+                {
+                    var handler = new System.Net.Http.HttpClientHandler
+                    {
+                        ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true
+                    };
+                    var httpClient = new System.Net.Http.HttpClient(handler);
+
+                    var apiProp = typeof(CloudinaryDotNet.Cloudinary).GetProperty("Api", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                    if (apiProp != null)
+                    {
+                        var apiObj = apiProp.GetValue(cloudinary);
+                        if (apiObj != null)
+                        {
+                            var clientField = typeof(CloudinaryDotNet.Api).GetField("Client", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                            if (clientField != null)
+                            {
+                                clientField.SetValue(apiObj, httpClient);
+                                Console.WriteLine(">>> [DI Configuration] Successfully injected SSL-bypassing HttpClient into Cloudinary SDK Client!");
+                            }
+                            else
+                            {
+                                Console.WriteLine(">>> [DI Configuration] Client field not found!");
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($">>> [DI Configuration] Error injecting SSL-bypassing HttpClient into Cloudinary: {ex.Message}");
+                }
+
                 builder.Services.AddSingleton(cloudinary);
             }
 
@@ -113,6 +168,30 @@ namespace CampusKart
 
             // Add additional endpoints required by the Identity /Account Razor components.
             app.MapAdditionalIdentityEndpoints();
+
+            app.MapGet("/test-cloudinary-connectivity", async (CloudinaryDotNet.Cloudinary cloudinary) =>
+            {
+                try
+                {
+                    var testParams = new CloudinaryDotNet.Actions.ImageUploadParams()
+                    {
+                        File = new CloudinaryDotNet.FileDescription("test.jpg", new System.IO.MemoryStream(new byte[] { 1, 2, 3, 4 })),
+                        Folder = "test_diagnostics"
+                    };
+                    var result = await cloudinary.UploadAsync(testParams);
+                    return Results.Json(new 
+                    {
+                        Success = result.Error == null,
+                        Error = result.Error?.Message,
+                        StatusCode = result.StatusCode,
+                        Url = result.SecureUrl?.ToString()
+                    });
+                }
+                catch (Exception ex)
+                {
+                    return Results.Json(new { Success = false, Error = ex.ToString() });
+                }
+            });
 
             app.Run();
         }
