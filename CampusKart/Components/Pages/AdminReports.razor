@@ -1,0 +1,470 @@
+@page "/admin/reports"
+@layout Layout.AdminLayout
+@inject CampusKart.Data.ApplicationDbContext DbContext
+@using Microsoft.EntityFrameworkCore
+@using CampusKart.Data
+
+<PageTitle>CampusKart Admin Console | User Reports</PageTitle>
+
+<style>
+    .admin-sidebar {
+        width: 280px;
+        background-color: var(--ck-primary-container) !important;
+        z-index: 1000;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .admin-main {
+        margin-left: 280px;
+        min-height: 100vh;
+        background-color: var(--ck-background);
+        padding-top: 64px; /* offset the fixed header */
+    }
+    .sidebar-link {
+        color: rgba(255, 255, 255, 0.75) !important;
+        text-decoration: none;
+        border-radius: 8px;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 4px 12px;
+        font-weight: 500;
+        font-size: 14px;
+        transition: all 0.2s ease-in-out;
+    }
+    .sidebar-link:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: #ffffff !important;
+    }
+    .sidebar-link.active {
+        background-color: rgba(0, 0, 0, 0.25) !important;
+        color: #ffffff !important;
+        font-weight: 600;
+    }
+    .admin-header {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: calc(100% - 280px);
+        height: 64px;
+        background-color: #ffffff;
+        border-bottom: 1px solid var(--ck-border-light);
+        z-index: 900;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+    }
+    .bg-surface-container-low {
+        background-color: #f6f3f2 !important;
+    }
+    .border-outline-variant-30 {
+        border: 1px solid rgba(194, 198, 212, 0.3) !important;
+    }
+    .nav-tabs .nav-link {
+        border: none;
+        font-weight: 600;
+        font-size: 14px;
+        padding: 12px 20px;
+        background: transparent;
+        color: var(--ck-secondary);
+        transition: all 0.2s ease-in-out;
+        border-bottom: 2px solid transparent;
+    }
+    .nav-tabs .nav-link:hover {
+        color: var(--ck-primary);
+        border-bottom: 2px solid var(--ck-border-light);
+    }
+    .nav-tabs .nav-link.active {
+        border-bottom: 2px solid var(--ck-primary-container) !important;
+        color: var(--ck-primary-container) !important;
+    }
+    .report-card {
+        background: #ffffff;
+        border: 1px solid var(--ck-border-light);
+        border-radius: 12px;
+        padding: 24px;
+        transition: all 0.2s ease-in-out;
+    }
+    .report-card:hover {
+        border-color: rgba(0, 86, 179, 0.4);
+        transform: translateY(-1px);
+    }
+    .report-thumbnail {
+        width: 96px;
+        height: 96px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid var(--ck-border-light);
+    }
+    .bg-tertiary-container-10 {
+        background-color: rgba(114, 43, 0, 0.08) !important;
+    }
+    .text-tertiary {
+        color: #722b00 !important;
+    }
+    .text-error {
+        color: #ba1a1a !important;
+    }
+    .btn-action-error {
+        background-color: #ba1a1a !important;
+        color: #ffffff !important;
+        border: none;
+        font-weight: 600;
+        font-size: 13px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    .btn-action-error:hover {
+        filter: brightness(0.9);
+    }
+    .btn-action-outline {
+        background: transparent;
+        color: var(--ck-secondary);
+        border: 1px solid var(--ck-border-color);
+        font-weight: 600;
+        font-size: 13px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    .btn-action-outline:hover {
+        background-color: #f6f3f2;
+    }
+    .cursor-not-allowed {
+        cursor: not-allowed !important;
+    }
+    @@media (max-width: 991.98px) {
+        .admin-sidebar {
+            display: none !important;
+        }
+        .admin-main {
+            margin-left: 0 !important;
+        }
+        .admin-header {
+            width: 100% !important;
+        }
+    }
+</style>
+
+<div class="d-flex">
+    <!-- Left SideNavBar (Full Height) -->
+    <aside class="admin-sidebar position-fixed top-0 start-0 vh-100 d-flex flex-column py-4 text-white">
+        <div class="px-4 mb-4">
+            <h1 class="h4 fw-bold text-white mb-0 tracking-tight">CampusKart</h1>
+            <p class="text-uppercase tracking-wider text-white-50 font-monospace mb-0" style="font-size: 10px;">Admin Console</p>
+        </div>
+        
+        <nav class="flex-grow-1 d-flex flex-column justify-content-between">
+            <div class="d-flex flex-column">
+                <a class="sidebar-link" href="admin">
+                    <span class="material-symbols-outlined">dashboard</span>
+                    <span>Dashboard</span>
+                </a>
+                <a class="sidebar-link" href="#" @onclick='() => TriggerAction("Users Management")'>
+                    <span class="material-symbols-outlined">group</span>
+                    <span>Users</span>
+                </a>
+                <a class="sidebar-link" href="#" @onclick='() => TriggerAction("Listings Management")'>
+                    <span class="material-symbols-outlined">inventory_2</span>
+                    <span>Listings</span>
+                </a>
+                <!-- Active Navigation -->
+                <a class="sidebar-link active" href="#" @onclick='() => TriggerAction("Reports Review")'>
+                    <span class="material-symbols-outlined">report</span>
+                    <span>Reports</span>
+                </a>
+                <a class="sidebar-link" href="#" @onclick='() => TriggerAction("Settings Panel")'>
+                    <span class="material-symbols-outlined">settings</span>
+                    <span>Settings</span>
+                </a>
+            </div>
+            
+            <div class="d-flex flex-column">
+                <a class="sidebar-link" href="">
+                    <span class="material-symbols-outlined">arrow_back</span>
+                    <span>Back to Store</span>
+                </a>
+                <hr class="mx-3 opacity-25" />
+                <div class="px-3 mb-2">
+                    <div class="d-flex align-items-center gap-3 p-2 rounded-3" style="background-color: rgba(255, 255, 255, 0.08);">
+                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-primary fw-bold" style="width: 32px; height: 32px; font-size: 13px;">
+                            A
+                        </div>
+                        <div class="overflow-hidden">
+                            <p class="mb-0 small fw-bold text-white text-truncate">Admin User</p>
+                            <p class="mb-0 text-white-50 text-truncate" style="font-size: 11px;">superadmin@campus.edu</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- TopNavBar & Main Content -->
+    <div class="flex-grow-1">
+        <!-- TopNavBar -->
+        <header class="admin-header border-bottom">
+            <!-- Search field -->
+            <div class="position-relative" style="width: 380px;">
+                <span class="material-symbols-outlined position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%); font-size: 20px;">search</span>
+                <input type="text" class="form-control ps-5 rounded-3 border-0 bg-surface-container-low" style="padding-top: 8px; padding-bottom: 8px; font-size: 14px;" placeholder="Search reports..." @bind="searchQuery" @onkeyup="CheckEnterKey" />
+            </div>
+            
+            <!-- Actions -->
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-link text-secondary p-2 rounded-circle hover-bg-light position-relative border-0" @onclick='() => TriggerAction("Notifications Alert")'>
+                    <span class="material-symbols-outlined" style="font-size: 22px;">notifications</span>
+                    <span class="position-absolute p-1 bg-danger border border-white rounded-circle" style="top: 8px; right: 8px;"></span>
+                </button>
+                <button class="btn btn-link text-secondary p-2 rounded-circle hover-bg-light border-0" @onclick='() => TriggerAction("Help Documentation")'>
+                    <span class="material-symbols-outlined" style="font-size: 22px;">help</span>
+                </button>
+                <div class="vr bg-secondary opacity-25" style="height: 24px;"></div>
+                <img alt="Admin Avatar" class="rounded-circle border border-light" style="width: 32px; height: 32px; object-fit: cover;" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDsKo6NE4Fr82OQ7bH2Sqs1IkIvYfFkTg-ZVEyl39V0paXMVjL9OTUC5aidY0BcBa-1LYO2DDsDahFvO8KY69JrhebFYJfp5gOzAYw_PwIGWhUj-kQSvOcq_Y_zxSrhtSnFLuDlMZFk7iJKFRL2aXs6melLBYk2a8b5-5seE-XMNVsAjOgDD6jzvThTY12E7mcROZneZuCuPlDEfGxEDKgrrNtk5rOyFsIyJW-Z6VtMcRFVtpH1a_EvbeEY0afud3xy0vGfXHFbYUA">
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="admin-main">
+            <div class="container-fluid p-4" style="max-width: 1120px;">
+                <!-- Custom simulated action alerts -->
+                @if (alertMessage != null)
+                {
+                    <div class="alert alert-@alertType alert-dismissible fade show mb-4 rounded-3 d-flex align-items-center gap-2" role="alert">
+                        <span class="material-symbols-outlined">info</span>
+                        <div>@alertMessage</div>
+                        <button type="button" class="btn-close" @onclick="DismissAlert" aria-label="Close"></button>
+                    </div>
+                }
+
+                <!-- Page Title -->
+                <div class="mb-4">
+                    <h2 class="h3 fw-bold text-dark mb-1">User Reports</h2>
+                    <p class="text-secondary mb-0">Review and manage reported items and community safety.</p>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <ul class="nav nav-tabs border-bottom mb-4">
+                    <li class="nav-item">
+                        <button class="nav-link @(activeTab == "All" ? "active" : "")" @onclick='() => SetActiveTab("All")'>All Reports</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link @(activeTab == "Pending" ? "active" : "")" @onclick='() => SetActiveTab("Pending")'>Pending</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link @(activeTab == "Resolved" ? "active" : "")" @onclick='() => SetActiveTab("Resolved")'>Resolved</button>
+                    </li>
+                </ul>
+
+                <!-- Reports Cards List -->
+                <div class="d-flex flex-column gap-3">
+                    @if (FilteredReports.Any())
+                    {
+                        @foreach (var report in FilteredReports)
+                        {
+                            <div class="report-card d-flex flex-column flex-md-row align-items-start gap-4">
+                                <!-- Status flag and thumbnail -->
+                                <div class="d-flex gap-3 align-items-start align-self-start flex-shrink-0">
+                                    <span class="material-symbols-outlined @(report.Status == "Pending" ? "text-error" : "text-muted")" style="font-variation-settings: 'FILL' @(report.Status == "Pending" ? "1" : "0"); font-size: 24px;">flag</span>
+                                    <img alt="Reported Item Photo" class="report-thumbnail" src="@report.ImageUrl" />
+                                </div>
+                                
+                                <!-- Content Details -->
+                                <div class="flex-grow-1 overflow-hidden d-flex flex-column gap-1">
+                                    <div class="d-flex justify-content-between align-items-start gap-2">
+                                        <h3 class="h5 fw-bold text-dark mb-0 text-truncate">@report.Title</h3>
+                                        <span class="badge rounded-pill @(report.Status == "Pending" ? "bg-tertiary-container-10 text-tertiary" : "bg-success-subtle text-success") font-label-md px-3 py-1 fw-semibold" style="font-size: 11px;">@report.Status</span>
+                                    </div>
+                                    <div class="d-flex flex-wrap align-items-center gap-2 mt-1" style="font-size: 12px;">
+                                        <span class="badge bg-light text-primary px-2 py-1 border border-light font-semibold">@report.Tag</span>
+                                        <span class="text-muted">• Reported by @report.ReportedBy</span>
+                                        <span class="text-muted">• @report.Date</span>
+                                    </div>
+                                    <p class="text-secondary small mt-2 mb-0" style="line-height: 1.6;">@report.Description</p>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="d-flex flex-column gap-2 flex-shrink-0 align-self-center mt-3 mt-md-0" style="min-width: 175px;">
+                                    @if (report.Status == "Pending")
+                                    {
+                                        <button class="btn-action-error d-flex align-items-center justify-content-center gap-2" @onclick="() => ApproveAndRemove(report)">
+                                            <span class="material-symbols-outlined" style="font-size: 18px;">delete_forever</span>
+                                            <span>Approve &amp; Remove</span>
+                                        </button>
+                                        <button class="btn-action-outline d-flex align-items-center justify-content-center gap-2" @onclick="() => DismissReport(report)">
+                                            <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
+                                            <span>Dismiss</span>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-muted italic small text-center mb-1">Resolved @report.ResolutionDate</div>
+                                        <button class="btn-action-outline bg-light text-muted border-light cursor-not-allowed d-flex align-items-center justify-content-center gap-2" disabled>
+                                            <span class="material-symbols-outlined" style="font-size: 18px;">history</span>
+                                            <span>View History</span>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center py-5 bg-white border border-light rounded-3 text-secondary">
+                            <span class="material-symbols-outlined text-muted mb-2" style="font-size: 48px;">inbox</span>
+                            <p class="mb-0">No reports found matching your criteria.</p>
+                        </div>
+                    }
+                </div>
+
+                <!-- Pagination Footer -->
+                <div class="mt-4 py-3 d-flex justify-content-center align-items-center gap-2">
+                    <button class="btn btn-outline-secondary border-outline-variant-30 rounded-3 p-2 d-flex align-items-center justify-content-center" @onclick='() => TriggerAction("Previous Page")'>
+                        <span class="material-symbols-outlined" style="font-size: 18px;">chevron_left</span>
+                    </button>
+                    <span class="badge bg-primary text-white font-label-md px-3 py-2 rounded-3" style="font-size: 13px;">1</span>
+                    <button class="btn btn-link text-secondary font-label-md px-3 py-2 text-decoration-none hover-bg-light rounded-3" style="font-size: 13px;" @onclick='() => TriggerAction("Page 2")'>2</button>
+                    <button class="btn btn-link text-secondary font-label-md px-3 py-2 text-decoration-none hover-bg-light rounded-3" style="font-size: 13px;" @onclick='() => TriggerAction("Page 3")'>3</button>
+                    <button class="btn btn-outline-secondary border-outline-variant-30 rounded-3 p-2 d-flex align-items-center justify-content-center" @onclick='() => TriggerAction("Next Page")'>
+                        <span class="material-symbols-outlined" style="font-size: 18px;">chevron_right</span>
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+@code {
+    private string activeTab = "All";
+    private string searchQuery = "";
+    private string? alertMessage;
+    private string alertType = "info";
+
+    private List<ReportItem> Reports = new();
+
+    private IEnumerable<ReportItem> FilteredReports => Reports
+        .Where(r => 
+            (activeTab == "All" || 
+             (activeTab == "Pending" && r.Status == "Pending") || 
+             (activeTab == "Resolved" && r.Status == "Resolved")) &&
+            (string.IsNullOrWhiteSpace(searchQuery) || 
+             r.Title.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+             r.ReportedBy.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+             r.Description.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+             r.Tag.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
+        );
+
+    protected override void OnInitialized()
+    {
+        // Populate standard user reports from the design specification
+        Reports.Add(new ReportItem
+        {
+            Title = "Apple MacBook Pro 2021",
+            Tag = "Fraudulent item",
+            ReportedBy = "Hassan Ali",
+            Date = "Oct 24, 2023",
+            Description = "Seller is asking for payment via external gift cards and refusing to meet on campus. This seems like a scam profile targeting freshmen.",
+            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuDavQq90IfM9N-VF0uQmce9y54n836W6l-dMQ6oy7svJV63Lu4f1DBqWj47Y5rEcQeZHfno0ES_H8sQ_t1fdoGFhDinQJGyFHd_Z8yotvoxFk-DWlckKYtVxrRa9kFvwbtanUWaY-FJzcj5dp_rKSUd0KBgBRGYZZJMBUdENCS_LT5fLMtSya9VNR22PmFlaKVUFiluKizwJ3_rx9a0UzOKZbeGUKpFFODBAdedLhg4Mk07aVuZPfKzsuMKQFHCu5siTngCKJjLYI4",
+            Status = "Pending"
+        });
+
+        Reports.Add(new ReportItem
+        {
+            Title = "Vintage Campus Hoodie",
+            Tag = "Incorrect Price",
+            ReportedBy = "Sarah Khan",
+            Date = "Oct 22, 2023",
+            Description = "The listing says $10 in the title but $100 in the description. User seems to be baiting with low prices.",
+            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuDOEIV3FyvteuGIvD8srkjMGCII2AcCwAnIckpR8WGt-TGp3bx43I6nFuQSPuxfNNdetfa_BgS9p6LCBhLhnx7m_cq0pdlbhcI9n82g-iH4NBzJxS2BIxxv9YrbI-HNoL2gaal1b1JS6_7ehGT11r7gtd2M80gTiZFKgLuX4Mv6rI2LKH5Z-dSp-gPYYt8gnDmAC2CMzODbK33nZQjKA_3ahwYUj9IJs-T7bAAj9KP6eE2BYWq5M7XDBz5c_B1AmmryOPN_Yx7HOK0",
+            Status = "Resolved",
+            ResolutionDate = "on Oct 23"
+        });
+
+        Reports.Add(new ReportItem
+        {
+            Title = "Medical Biology Textbook - 12th Ed",
+            Tag = "Spam",
+            ReportedBy = "Hamid Khan",
+            Date = "Oct 21, 2023",
+            Description = "This same user has posted this book 15 times in the last hour. Flooding the 'Books' category and burying other listings.",
+            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuA_BL66j8TEvRqaxOevraAyhvQnJyEfwxLwegI_ZulC0PNt2zqB9xOBxGPDaey-BH8663TrkCsdvaWtpkApJBJai-u7XBBUp2KAQUy4XmdWmJi-i5bErVjPFrIlqom4EGaolyuYxiJmth0BlkkERQHY_sxKr-rpYFMOgPHTTryv1jXCeySGp1hFCRKZ7lzvRvynGjammJYV8jnHA4SvETpq33HOSAHY3nnZQYmfYFy6JQe2nizB2mPPuuWAx5Tzgzp0awNLBKyAjXg",
+            Status = "Pending"
+        });
+
+        Reports.Add(new ReportItem
+        {
+            Title = "Sony Alpha A7III - Body Only",
+            Tag = "Fraudulent item",
+            ReportedBy = "Javaid Ali",
+            Date = "Oct 20, 2023",
+            Description = "Price is suspiciously low ($200) for a camera that retails at $1500+. Photos are stock images found on Amazon.",
+            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuDlqrl10jxRGCwmXFjNFuzNbFk1r1RoQL_EvqlHQjpmKBflZ5Ns1kQNgNx_WCiZLSYQJwRePVKQPWt0rg4adWGNgJNdPbTlFlHA_5E0QumJpGL4NoWa1_goRVybllT4Zk-N4JJKboMcWF3MXc6LCd4NTF5txb-1mFoSDIhCRIFPxgTWlds-0dRcNqgTCnKi1Qke9w2ch1Mplf7YI_dd_pzu17V-0djyxgtCyPNEbSNjc2zSYyj3kNP7BIa8WUPgcMc3LBhSZDiJGFo",
+            Status = "Pending"
+        });
+    }
+
+    private void SetActiveTab(string tabName)
+    {
+        activeTab = tabName;
+        DismissAlert();
+    }
+
+    private void ApproveAndRemove(ReportItem report)
+    {
+        Reports.Remove(report);
+        alertMessage = $"Listing for '{report.Title}' has been approved for removal and removed from listings.";
+        alertType = "success";
+        StateHasChanged();
+    }
+
+    private void DismissReport(ReportItem report)
+    {
+        report.Status = "Resolved";
+        report.ResolutionDate = "on " + DateTime.UtcNow.ToString("MMM dd, yyyy");
+        alertMessage = $"Report for '{report.Title}' has been dismissed. The item remains active on the store.";
+        alertType = "success";
+        StateHasChanged();
+    }
+
+    private void TriggerAction(string actionName)
+    {
+        alertMessage = $"Simulated: '{actionName}' triggered successfully.";
+        alertType = "info";
+    }
+
+    private void DismissAlert()
+    {
+        alertMessage = null;
+    }
+
+    private void CheckEnterKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            HandleSearch();
+        }
+    }
+
+    private void HandleSearch()
+    {
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            alertMessage = $"Search Simulated: Finding records matching '{searchQuery}'...";
+            alertType = "info";
+        }
+    }
+
+    public class ReportItem
+    {
+        public string Title { get; set; } = "";
+        public string Tag { get; set; } = "";
+        public string ReportedBy { get; set; } = "";
+        public string Date { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string ImageUrl { get; set; } = "";
+        public string Status { get; set; } = "Pending";
+        public string? ResolutionDate { get; set; }
+    }
+}

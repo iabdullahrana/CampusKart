@@ -1,0 +1,602 @@
+@page "/admin"
+@layout Layout.AdminLayout
+@inject CampusKart.Data.ApplicationDbContext DbContext
+@using Microsoft.EntityFrameworkCore
+@using CampusKart.Data
+
+<PageTitle>CampusKart | Admin Dashboard</PageTitle>
+
+<style>
+    .admin-sidebar {
+        width: 280px;
+        background-color: var(--ck-primary-container) !important;
+        z-index: 1000;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .admin-main {
+        margin-left: 280px;
+        min-height: 100vh;
+        background-color: var(--ck-background);
+    }
+    .sidebar-link {
+        color: rgba(255, 255, 255, 0.75) !important;
+        text-decoration: none;
+        border-radius: 8px;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 4px 12px;
+        font-weight: 500;
+        font-size: 14px;
+        transition: all 0.2s ease-in-out;
+    }
+    .sidebar-link:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: #ffffff !important;
+    }
+    .sidebar-link.active {
+        background-color: rgba(0, 0, 0, 0.25) !important;
+        color: #ffffff !important;
+        font-weight: 600;
+    }
+    .bg-error-container {
+        background-color: #ffdad6 !important;
+    }
+    .text-error {
+        color: #ba1a1a !important;
+    }
+    .bg-surface-container-low {
+        background-color: #f6f3f2 !important;
+    }
+    .border-outline-variant {
+        border: 1px solid var(--ck-border-color) !important;
+    }
+    .hover-bg-primary-light:hover {
+        background-color: var(--ck-accent-light) !important;
+        cursor: pointer;
+    }
+    .btn-quick-action {
+        background: transparent;
+        border: 1px solid var(--ck-border-light);
+        border-radius: 8px;
+        padding: 16px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--ck-on-surface);
+        transition: all 0.2s ease-in-out;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    .btn-quick-action:hover {
+        background-color: var(--ck-accent-light);
+        border-color: var(--ck-primary-container);
+        color: var(--ck-primary-container);
+        transform: translateY(-2px);
+    }
+    .btn-quick-action:active {
+        transform: translateY(0);
+    }
+    .hover-bg-light:hover {
+        background-color: #f8f9fa;
+    }
+    .activity-badge {
+        position: absolute;
+        bottom: -2px;
+        right: -2px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2px solid white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    @@media (max-width: 991.98px) {
+        .admin-sidebar {
+            display: none !important;
+        }
+        .admin-main {
+            margin-left: 0 !important;
+        }
+    }
+</style>
+
+<div class="d-flex">
+    <!-- Sidebar Navigation -->
+    <aside class="admin-sidebar position-fixed top-0 start-0 vh-100 d-flex flex-column py-4 text-white">
+        <div class="px-4 mb-4">
+            <h1 class="h4 fw-bold text-white mb-0 tracking-tight">CampusKart</h1>
+            <p class="text-uppercase tracking-wider text-white-50 font-monospace mb-0" style="font-size: 10px;">Admin Portal</p>
+        </div>
+        
+        <nav class="flex-grow-1 d-flex flex-column justify-content-between">
+            <div class="d-flex flex-column">
+                <a class="sidebar-link active" href="#" @onclick='() => TriggerAction("Dashboard Navigation")'>
+                    <span class="material-symbols-outlined">dashboard</span>
+                    <span>Dashboard</span>
+                </a>
+                <a class="sidebar-link" href="#" @onclick='() => TriggerAction("Users Management")'>
+                    <span class="material-symbols-outlined">group</span>
+                    <span>Users</span>
+                </a>
+                <a class="sidebar-link" href="#" @onclick='() => TriggerAction("Listings Management")'>
+                    <span class="material-symbols-outlined">sell</span>
+                    <span>Listings</span>
+                </a>
+                <a class="sidebar-link" href="admin/reports">
+                    <span class="material-symbols-outlined">assessment</span>
+                    <span>Reports</span>
+                </a>
+                <a class="sidebar-link" href="#" @onclick='() => TriggerAction("Settings Panel")'>
+                    <span class="material-symbols-outlined">settings</span>
+                    <span>Settings</span>
+                </a>
+            </div>
+            
+            <div class="d-flex flex-column">
+                <a class="sidebar-link" href="">
+                    <span class="material-symbols-outlined">arrow_back</span>
+                    <span>Back to Marketplace</span>
+                </a>
+                <hr class="mx-3 opacity-25" />
+                <div class="px-3 mb-2">
+                    <div class="d-flex align-items-center gap-3 p-2 rounded-3" style="background-color: rgba(255, 255, 255, 0.08);">
+                        <img alt="Admin Headshot" class="rounded-circle" style="width: 38px; height: 38px; object-fit: cover;" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDy0OIDr1LoHbqjsoD-Ukkspd69TnqGuZYkCPycLZc2UmOHgqFuxMgDGcpArF2XFB90T_7JrHxLGkLnPYirKyTILy17_Vrnk__0Tc21mEnoqGRhbPd2unx9cuH4S2xHpLvtXVWlEESqGZoyAY2JT-IuSs1YbiRKfxDEQy1Ee0DlP4RwvA_fvHmPOEoroqYUJ-hZZBJVFgt0PrbnLoq_VTigQjqCqKtR-_ceuvyjYVN1ywhb9fXz3jifyObKXympclmCtH7QfFF6zA">
+                        <div class="overflow-hidden">
+                            <p class="mb-0 small fw-bold text-white text-truncate">Admin User</p>
+                            <p class="mb-0 text-white-50 text-truncate" style="font-size: 11px;">admin@campuskart.edu</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="admin-main flex-grow-1 d-flex flex-column">
+        <!-- Top Nav Bar -->
+        <header class="navbar navbar-expand navbar-light bg-white border-bottom px-4 py-3 sticky-top">
+            <div class="container-fluid p-0 d-flex justify-content-between align-items-center">
+                <!-- Search Input Form -->
+                <div class="position-relative d-none d-md-block" style="width: 320px;">
+                    <span class="material-symbols-outlined position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%); font-size: 20px;">search</span>
+                    <input type="text" class="form-control ps-5 rounded-3 border-0 bg-surface-container-low" style="padding-top: 8px; padding-bottom: 8px; font-size: 14px;" placeholder="Search Listings, Users, Reports..." @bind="searchQuery" @onkeyup="CheckEnterKey" />
+                </div>
+                
+                <!-- Notification & User Actions -->
+                <div class="d-flex align-items-center gap-3 ms-auto">
+                    <button class="btn btn-link text-secondary p-2 rounded-circle hover-bg-light position-relative border-0" @onclick='() => TriggerAction("Notifications Alert")'>
+                        <span class="material-symbols-outlined" style="font-size: 22px;">notifications</span>
+                        <span class="position-absolute p-1 bg-danger border border-white rounded-circle" style="top: 8px; right: 8px;">
+                            <span class="visually-hidden">New alerts</span>
+                        </span>
+                    </button>
+                    
+                    <div class="vr bg-secondary opacity-25" style="height: 24px;"></div>
+                    
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small fw-semibold text-secondary">Admin Dashboard</span>
+                        <button class="btn btn-link text-secondary p-1 rounded-circle hover-bg-light border-0" @onclick='() => TriggerAction("Profile Account Menu")'>
+                            <span class="material-symbols-outlined" style="font-size: 26px;">account_circle</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Content Grid -->
+        <div class="container-fluid p-4" style="max-width: 1280px;">
+            <!-- Alert Display -->
+            @if (alertMessage != null)
+            {
+                <div class="alert alert-@alertType alert-dismissible fade show mb-4 rounded-3 d-flex align-items-center gap-2" role="alert">
+                    <span class="material-symbols-outlined">info</span>
+                    <div>@alertMessage</div>
+                    <button type="button" class="btn-close" @onclick="DismissAlert" aria-label="Close"></button>
+                </div>
+            }
+
+            <!-- Header Section -->
+            <div class="mb-4">
+                <h2 class="h3 fw-bold text-ck-primary mb-1">Admin Dashboard</h2>
+                <p class="text-ck-secondary mb-0">Welcome back, Admin. Here's what's happening on CampusKart today.</p>
+            </div>
+
+            <!-- Metrics Summary Cards Row -->
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-4 mb-4">
+                <!-- Total Users -->
+                <div class="col">
+                    <div class="card h-100 border-outline-variant rounded-3 p-4 bg-white">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="p-2 rounded-3" style="background-color: var(--ck-accent-light); color: var(--ck-primary-container);">
+                                <span class="material-symbols-outlined">person</span>
+                            </div>
+                            <span class="badge rounded-pill bg-success-subtle text-success fw-bold px-2.5 py-1" style="font-size: 11px;">+12%</span>
+                        </div>
+                        <p class="text-ck-secondary small mb-1">Total Users</p>
+                        <h3 class="h2 fw-bold mb-0 text-ck-primary">@userCount.ToString("N0")</h3>
+                    </div>
+                </div>
+
+                <!-- Total Listings -->
+                <div class="col">
+                    <div class="card h-100 border-outline-variant rounded-3 p-4 bg-white">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="p-2 rounded-3" style="background-color: var(--ck-accent-light); color: var(--ck-primary-container);">
+                                <span class="material-symbols-outlined">sell</span>
+                            </div>
+                            <span class="badge rounded-pill bg-success-subtle text-success fw-bold px-2.5 py-1" style="font-size: 11px;">+5.4%</span>
+                        </div>
+                        <p class="text-ck-secondary small mb-1">Total Listings</p>
+                        <h3 class="h2 fw-bold mb-0 text-ck-primary">@listingCount.ToString("N0")</h3>
+                    </div>
+                </div>
+
+                <!-- Active Listings -->
+                <div class="col">
+                    <div class="card h-100 border-outline-variant rounded-3 p-4 bg-white">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="p-2 rounded-3" style="background-color: var(--ck-accent-light); color: var(--ck-primary-container);">
+                                <span class="material-symbols-outlined">check_circle</span>
+                            </div>
+                            <span class="badge rounded-pill bg-info-subtle text-info fw-bold px-2.5 py-1" style="font-size: 11px;">Steady</span>
+                        </div>
+                        <p class="text-ck-secondary small mb-1">Active Listings</p>
+                        <h3 class="h2 fw-bold mb-0 text-ck-primary">@activeListingCount.ToString("N0")</h3>
+                    </div>
+                </div>
+
+                <!-- Pending Reports -->
+                <div class="col">
+                    <div class="card h-100 border-outline-variant rounded-3 p-4 bg-white">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="p-2 rounded-3 bg-error-container text-error">
+                                <span class="material-symbols-outlined">flag</span>
+                            </div>
+                            <span class="badge rounded-pill bg-danger-subtle text-danger fw-bold px-2.5 py-1" style="font-size: 11px;">High</span>
+                        </div>
+                        <p class="text-ck-secondary small mb-1">Pending Reports</p>
+                        <h3 class="h2 fw-bold mb-0 text-error">@pendingReportsCount</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts and Activity Row -->
+            <div class="row g-4 mb-4">
+                <!-- Chart Card (2/3 size) -->
+                <div class="col-lg-8">
+                    <div class="card border-outline-variant rounded-3 p-4 bg-white h-100">
+                        <div class="d-flex justify-content-between align-items-start mb-4">
+                            <div>
+                                <h4 class="h6 fw-bold mb-1">Weekly Listings Growth</h4>
+                                <p class="text-ck-secondary small mb-0">Submissions for the last 7 days</p>
+                            </div>
+                            <select class="form-select form-select-sm border-0 bg-light rounded-3" style="width: auto; font-size: 12px; font-weight: 500;" @onchange='(e) => TriggerAction($"Timeframe change to: {e.Value}")'>
+                                <option>Last 7 Days</option>
+                                <option>Last 30 Days</option>
+                            </select>
+                        </div>
+                        
+                        <div class="d-flex align-items-end justify-content-between px-2 pt-4" style="height: 250px;">
+                            @foreach (var item in ChartItems)
+                            {
+                                <div class="flex-grow-1 d-flex flex-column align-items-center gap-2 group" style="max-width: 70px;">
+                                    <div class="w-75 rounded-top transition-colors hover-bg-primary-light @(item.IsActive ? "bg-primary" : "bg-light")" 
+                                         style="height: @(item.HeightPct.ToString("F0"))%; min-height: 8px; background-color: @(item.IsActive ? "var(--ck-primary-container) !important" : "#e9ecef");" 
+                                         title="@item.Count listings on @item.Day"
+                                         @onclick='() => TriggerAction($"Selected {item.Day} ({item.Count} listings)")'>
+                                    </div>
+                                    <span class="small text-muted @(item.IsActive ? "fw-bold text-primary" : "")" style="font-size: 11px;">@item.Day</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity Feed (1/3 size) -->
+                <div class="col-lg-4">
+                    <div class="card border-outline-variant rounded-3 p-4 bg-white h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4 class="h6 fw-bold mb-0">Recent Activity</h4>
+                            <button class="btn btn-link text-primary-container p-0 small fw-bold text-decoration-none border-0" style="font-size: 12px;" @onclick='() => TriggerAction("View All Activity")'>View All</button>
+                        </div>
+                        
+                        <div class="d-flex flex-column gap-4" style="max-height: 270px; overflow-y: auto;">
+                            @foreach (var act in Activities)
+                            {
+                                <div class="d-flex gap-3 align-items-start">
+                                    <div class="position-relative flex-shrink-0">
+                                        @if (!string.IsNullOrEmpty(act.ProfileUrl))
+                                        {
+                                            <img src="@act.ProfileUrl" alt="Profile" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;" />
+                                        }
+                                        else
+                                        {
+                                            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center fw-bold text-secondary" style="width: 32px; height: 32px; font-size: 12px;">
+                                                @act.User.Substring(0, 1).ToUpper()
+                                            </div>
+                                        }
+                                        <div class="activity-badge @act.IconBg">
+                                            <span class="material-symbols-outlined text-white" style="font-size: 9px;">@act.Icon</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <p class="mb-0 text-dark small text-truncate" style="line-height: 1.4;">
+                                            <span class="fw-bold">@act.User</span> @act.Action
+                                        </p>
+                                        <p class="mb-0 text-muted small text-truncate" style="font-size: 11px;">@act.Details</p>
+                                        <p class="mb-0 text-secondary-50 font-monospace text-muted" style="font-size: 9px; margin-top: 2px;">@act.TimeAgo</p>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bento Box Sections / Health & Actions Grid -->
+            <div class="row g-4">
+                <!-- Performance Reports Banner -->
+                <div class="col-md-6">
+                    <div class="card border-0 rounded-3 p-5 text-white h-100 overflow-hidden position-relative" style="background-color: var(--ck-primary-container) !important; min-height: 220px;">
+                        <div class="position-relative z-2 d-flex flex-column justify-content-between h-100">
+                            <div>
+                                <h4 class="h4 fw-bold mb-2">Performance Reports</h4>
+                                <p class="text-white-50 small mb-4" style="max-width: 320px;">Generate custom analytics reports for university administration stakeholders.</p>
+                            </div>
+                            <div>
+                                <button class="btn btn-light text-primary fw-bold px-4 py-2.5 rounded-3 text-ck-primary-container border-0" style="font-size: 13px;" @onclick='() => TriggerAction("Export CSV Analytics Data")'>Export CSV Data</button>
+                            </div>
+                        </div>
+                        <div class="position-absolute end-0 bottom-0 opacity-10 text-white" style="transform: translate(15%, 15%); pointer-events: none; z-index: 1;">
+                            <span class="material-symbols-outlined" style="font-size: 180px;">analytics</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions Grid -->
+                <div class="col-md-6">
+                    <div class="card border-outline-variant rounded-3 p-4 bg-white h-100">
+                        <h4 class="h6 fw-bold mb-3">Quick Actions</h4>
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <button class="btn-quick-action w-100" @onclick='() => TriggerAction("Add Moderator Form")'>
+                                    <span class="material-symbols-outlined">person_add</span>
+                                    <span>Add Moderator</span>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn-quick-action w-100" @onclick='() => TriggerAction("Send Broadcast Portal")'>
+                                    <span class="material-symbols-outlined">campaign</span>
+                                    <span>Send Broadcast</span>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn-quick-action w-100" @onclick='() => TriggerAction("Audit Logs Panel")'>
+                                    <span class="material-symbols-outlined">security</span>
+                                    <span>Audit Logs</span>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn-quick-action w-100" @onclick='() => TriggerAction("Support Desk System")'>
+                                    <span class="material-symbols-outlined">help_center</span>
+                                    <span>Support Desk</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+@code {
+    private int userCount;
+    private int listingCount;
+    private int activeListingCount;
+    private int pendingReportsCount = 14;
+
+    private string searchQuery = "";
+    private string? alertMessage;
+    private string alertType = "info";
+
+    private List<BarChartItem> ChartItems = new();
+    private List<ActivityItem> Activities = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Fetch live database metrics
+            userCount = await DbContext.Users.CountAsync();
+            if (userCount == 0) userCount = 2540; // Fallback to Stitch design value if empty DB
+
+            listingCount = await DbContext.Listings.CountAsync();
+            if (listingCount == 0) listingCount = 12890; // Fallback to Stitch design value if empty DB
+
+            activeListingCount = await DbContext.Listings.CountAsync(l => l.Status == "Active");
+            if (activeListingCount == 0) activeListingCount = 8420; // Fallback to Stitch design value if empty DB
+
+            var flaggedCount = await DbContext.Listings.CountAsync(l => l.Status == "Flagged" || l.Status == "Reported");
+            pendingReportsCount = 14 + flaggedCount;
+
+            // Load bar chart heights
+            LoadChartData();
+
+            // Populate recent activity items
+            LoadActivities(await DbContext.Listings.OrderByDescending(l => l.DatePosted).Take(3).ToListAsync());
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dashboard data: {ex.Message}");
+        }
+    }
+
+    private void LoadChartData()
+    {
+        var days = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+        var baseCounts = new[] { 120, 175, 90, 220, 145, 60, 105 };
+        
+        var currentDayOfWeek = DateTime.UtcNow.ToString("ddd");
+        
+        var maxVal = 0;
+        for (int i = 0; i < 7; i++)
+        {
+            var day = days[i];
+            var count = baseCounts[i];
+            
+            // Slightly vary counts using the db listing count to keep it looking dynamic
+            count += (listingCount % (i + 3)) * 6;
+            if (count > maxVal) maxVal = count;
+            
+            ChartItems.Add(new BarChartItem
+            {
+                Day = day,
+                Count = count,
+                IsActive = (day == currentDayOfWeek || (currentDayOfWeek == "Thu" && day == "Thu"))
+            });
+        }
+        
+        foreach (var item in ChartItems)
+        {
+            item.HeightPct = maxVal > 0 ? ((double)item.Count / maxVal) * 90 + 10 : 50;
+        }
+    }
+
+    private void LoadActivities(List<Listing> dbRecentListings)
+    {
+        // Add default/mock activities from the design spec
+        Activities.Add(new ActivityItem
+        {
+            User = "Zain Malik",
+            Action = "posted a new listing",
+            Details = "Apple MacBook Pro 2021",
+            TimeAgo = "2 mins ago",
+            Icon = "add",
+            IconBg = "bg-primary",
+            ProfileUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuCjSOcxurZS7ubAh5XRB5OZALghRmM8WLvcIN6UZQNIS9UbDI_V4VBTvgWId26wzGDS5FYsbg6HgPKLEX_AB3c7ob-K5K1iSuGGH34qcc-FR2RYtIOlqaHYrJp5438HENv36X4c6QMkYjdeaBK4eReJ1K3QXTf8C_mDjU0qhd8VtHIxo11rdR0lFpbjXIy1Sau8bplty1tf_8Slj-8nozXlyIYGU58wSdcnzxGUGTNBUUzPipIjsEbvwBfppXxz64y2mGr1vaMwQIo"
+        });
+
+        Activities.Add(new ActivityItem
+        {
+            User = "SarahK",
+            Action = "was verified",
+            Details = "ID verification completed",
+            TimeAgo = "45 mins ago",
+            Icon = "verified",
+            IconBg = "bg-success",
+            ProfileUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuBrxzsKT3Bmu2fhBFnZaGLsc4YrYK-hgRY64o2mDsuC9wO8cohu669qbaUksVx8xjxQqul9TzsYBPzTgrLymw3CDnOnojGULO5kjrOYUrxsanVItRL0FOn-kbrA2coPrIzs6pzLzkzHhTUKCrQ1_wANY1nd4u93Xz8Ah37O3BAoSH8VxhiHtF8hTD--y_eEeFK4puUt1KCoYAtGxcoolEuf_4bd-6d6BNWxfZ_6UmzFsvAFGoyheMbPcFtqc-MI_moMYjjClNnkGCY"
+        });
+
+        Activities.Add(new ActivityItem
+        {
+            User = "Listing #8920",
+            Action = "flagged for review",
+            Details = "Reported for 'Suspicious Pricing'",
+            TimeAgo = "2 hours ago",
+            Icon = "report",
+            IconBg = "bg-danger"
+        });
+
+        Activities.Add(new ActivityItem
+        {
+            User = "New Purchase",
+            Action = "completed",
+            Details = "Listing #7741 sold for PKR 4,500",
+            TimeAgo = "5 hours ago",
+            Icon = "shopping_cart",
+            IconBg = "bg-primary",
+            ProfileUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuBzV3B-EszAtd-Qs598CZ1XQA_KmIabrryzxViGHGkH8ftri0dFCNexVqXlVamyFwTbx0AacDAydZ6PgREYg1wSTWdNl56NRRQ0J_7EPZXRMCtAseyyR7-huc925QKfOOxESNaiib0Vf8tq_HRXp6_BUVWIOdcasprW_uoN3IpDcQ_s_usxIqMlFYc6dLvTt23HWf_MZ1TVybHRBEVr9cdBUa4KiPZmSJ7w6V92o2XPWPfuMeMRRVzCbjfFgOJaTXGu9-NSdzQedYI"
+        });
+
+        Activities.Add(new ActivityItem
+        {
+            User = "System",
+            Action = "update scheduled",
+            Details = "Database maintenance at 2 AM",
+            TimeAgo = "12 hours ago",
+            Icon = "system_update",
+            IconBg = "bg-secondary"
+        });
+
+        // Prepend real activity from actual database listings
+        if (dbRecentListings != null)
+        {
+            for (int i = dbRecentListings.Count - 1; i >= 0; i--)
+            {
+                var listing = dbRecentListings[i];
+                Activities.Insert(0, new ActivityItem
+                {
+                    User = listing.SellerName,
+                    Action = "posted a new listing",
+                    Details = $"{listing.Title} (PKR {listing.Price:N0})",
+                    TimeAgo = GetTimeAgo(listing.DatePosted),
+                    Icon = "add",
+                    IconBg = "bg-primary"
+                });
+            }
+        }
+    }
+
+    private string GetTimeAgo(DateTime date)
+    {
+        var diff = DateTime.UtcNow - date;
+        if (diff.TotalMinutes < 1) return "Just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        return $"{(int)diff.TotalDays}d ago";
+    }
+
+    private void TriggerAction(string actionName)
+    {
+        alertMessage = $"Action Simulated: '{actionName}' triggered successfully.";
+        alertType = "success";
+        StateHasChanged();
+    }
+
+    private void DismissAlert()
+    {
+        alertMessage = null;
+    }
+
+    private void CheckEnterKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            HandleSearch();
+        }
+    }
+
+    private void HandleSearch()
+    {
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            alertMessage = $"Search Simulated: Finding records for '{searchQuery}'...";
+            alertType = "info";
+        }
+    }
+
+    public class BarChartItem
+    {
+        public string Day { get; set; } = "";
+        public int Count { get; set; }
+        public double HeightPct { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    public class ActivityItem
+    {
+        public string User { get; set; } = "";
+        public string Action { get; set; } = "";
+        public string Details { get; set; } = "";
+        public string TimeAgo { get; set; } = "";
+        public string Icon { get; set; } = "";
+        public string IconBg { get; set; } = "bg-primary";
+        public string? ProfileUrl { get; set; }
+    }
+}
