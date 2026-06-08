@@ -1,0 +1,229 @@
+@page "/admin/login"
+@layout Layout.AdminLayout
+@inject NavigationManager Navigation
+
+<PageTitle>Admin Login | CampusKart</PageTitle>
+
+<style>
+    body {
+        background-color: #fbf9f8;
+        font-family: 'Inter', sans-serif;
+    }
+    .login-container {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    .login-card {
+        border-radius: 12px;
+        border: 1px solid rgba(0, 86, 179, 0.1) !important;
+        background-color: #ffffff;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+        max-width: 440px;
+        width: 100%;
+        padding: 40px;
+        transition: transform 0.2s ease-in-out;
+    }
+    .login-card:hover {
+        transform: translateY(-2px);
+    }
+    .relative-input-wrapper {
+        position: relative;
+    }
+    .relative-input-wrapper .material-symbols-outlined.prefix-icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #727784;
+    }
+    .relative-input-wrapper .suffix-btn {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #727784;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.2s ease;
+    }
+    .relative-input-wrapper .suffix-btn:hover {
+        color: var(--ck-primary);
+    }
+    .form-control-custom {
+        padding-left: 48px !important;
+        padding-right: 48px !important;
+        padding-top: 12px;
+        padding-bottom: 12px;
+        border-radius: 8px;
+        border: 1px solid var(--ck-border-color);
+        background-color: #ffffff;
+        outline: none;
+        transition: all 0.2s ease;
+    }
+    .form-control-custom:focus {
+        border-color: var(--ck-primary-container);
+        box-shadow: 0 0 0 3px rgba(0, 86, 179, 0.1);
+    }
+    .bg-light-blue {
+        background-color: #f0f4f9;
+    }
+    .text-ck-primary {
+        color: var(--ck-primary) !important;
+    }
+    .text-ck-primary-container {
+        color: var(--ck-primary-container) !important;
+    }
+    .btn-ck-primary-login {
+        background-color: var(--ck-primary-container) !important;
+        color: #ffffff !important;
+        font-weight: 600;
+        padding: 14px;
+        border-radius: 8px;
+        border: none;
+        transition: all 0.2s ease-in-out;
+    }
+    .btn-ck-primary-login:hover {
+        background-color: var(--ck-primary-container-hover) !important;
+        transform: translateY(-1px);
+    }
+    .btn-ck-primary-login:active {
+        transform: translateY(0);
+    }
+</style>
+
+<div class="login-container">
+    <!-- Header / Brand -->
+    <header class="w-full bg-white border-bottom border-light z-3 h-20 shadow-sm">
+        <div class="container d-flex justify-content-between align-items-center h-100 px-4" style="height: 80px;">
+            <a class="text-ck-primary fs-3 fw-black text-decoration-none tracking-tight d-flex align-items-center gap-2" href="/" style="font-weight: 900;">
+                CampusKart
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Content Canvas -->
+    <main class="flex-grow-1 d-flex align-items-center justify-content-center p-4 position-relative overflow-hidden">
+        <!-- Subtle background pattern -->
+        <div class="position-absolute top-0 start-0 w-100 h-100 opacity-25 pointer-events-none" 
+             style="background-image: radial-gradient(#003f87 1px, transparent 1px); background-size: 32px 32px; z-index: 0;"></div>
+        
+        <div class="login-card position-relative z-1">
+            <div class="d-flex flex-column align-items-center text-center mb-4">
+                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mb-3 text-ck-primary" style="width: 64px; height: 64px;">
+                    <span class="material-symbols-outlined" style="font-size: 32px;">admin_panel_settings</span>
+                </div>
+                <h1 class="h3 fw-bold text-ck-primary mb-1">Admin Login</h1>
+                <p class="text-secondary small mb-0">Authorized access for CampusKart moderators.</p>
+            </div>
+
+            <!-- Error Banner -->
+            @if (errorMessage != null)
+            {
+                <div class="alert alert-danger border-0 rounded-3 p-3 mb-4 d-flex align-items-center gap-2 small fw-bold" 
+                     style="background-color: rgba(220, 53, 69, 0.08); color: #dc3545;" role="alert">
+                    <span class="material-symbols-outlined" style="font-size: 20px;">error</span>
+                    <span>@errorMessage</span>
+                </div>
+            }
+
+            <form @onsubmit="HandleLogin" class="d-flex flex-column gap-3">
+                <!-- Email Field -->
+                <div class="d-flex flex-column gap-1">
+                    <label class="small fw-semibold text-secondary ps-1" for="admin_email">Admin Email</label>
+                    <div class="relative-input-wrapper">
+                        <span class="material-symbols-outlined prefix-icon">mail</span>
+                        <input class="form-control form-control-custom w-100" id="admin_email" type="email" 
+                               placeholder="admin@campuskart.edu" @bind="adminEmail" required />
+                    </div>
+                </div>
+
+                <!-- Password Field -->
+                <div class="d-flex flex-column gap-1">
+                    <label class="small fw-semibold text-secondary ps-1" for="password">Password</label>
+                    <div class="relative-input-wrapper">
+                        <span class="material-symbols-outlined prefix-icon">lock</span>
+                        <input class="form-control form-control-custom w-100" id="password" type="@passwordInputType" 
+                               placeholder="••••••••" @bind="adminPassword" required />
+                        <button class="suffix-btn" type="button" @onclick="TogglePasswordVisibility">
+                            <span class="material-symbols-outlined">@passwordVisibilityIcon</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-2">
+                    <button class="btn-ck-primary-login w-100 d-flex align-items-center justify-content-center gap-2" type="submit">
+                        <span>Log in</span>
+                        <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
+                    </button>
+                </div>
+
+                <!-- Security Indicator -->
+                <div class="d-flex align-items-center justify-content-center gap-1 text-muted mt-2" style="font-size: 11px;">
+                    <span class="material-symbols-outlined text-muted" style="font-size: 14px;">verified_user</span>
+                    <span>End-to-end encrypted session</span>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full py-5 px-4 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 container border-top border-light mt-auto">
+        <div class="d-flex flex-column align-items-center align-items-md-start gap-1">
+            <span class="fs-5 fw-bold text-ck-primary-container">CampusKart</span>
+            <p class="text-secondary small mb-0">© 2026 CampusKart. Built for students, by students.</p>
+        </div>
+        <div class="d-flex gap-4">
+            <a class="text-secondary small text-decoration-none hover-underline hover-text-primary" href="#">About</a>
+            <a class="text-secondary small text-decoration-none hover-underline hover-text-primary" href="#">Safety</a>
+            <a class="text-secondary small text-decoration-none hover-underline hover-text-primary" href="#">Terms</a>
+            <a class="text-secondary small text-decoration-none hover-underline hover-text-primary" href="#">Privacy</a>
+            <a class="text-secondary small text-decoration-none hover-underline hover-text-primary" href="#">Contact</a>
+        </div>
+    </footer>
+</div>
+
+@code {
+    private string adminEmail = "";
+    private string adminPassword = "";
+    private string? errorMessage;
+
+    private string passwordInputType = "password";
+    private string passwordVisibilityIcon = "visibility";
+
+    private void TogglePasswordVisibility()
+    {
+        if (passwordInputType == "password")
+        {
+            passwordInputType = "text";
+            passwordVisibilityIcon = "visibility_off";
+        }
+        else
+        {
+            passwordInputType = "password";
+            passwordVisibilityIcon = "visibility";
+        }
+    }
+
+    private void HandleLogin()
+    {
+        errorMessage = null;
+
+        // Perform authentication check
+        if (adminEmail == "superadmin@campuskart.pk" && adminPassword == "iabdsultan")
+        {
+            // Redirect to Admin Dashboard upon successful login
+            Navigation.NavigateTo("admin");
+        }
+        else
+        {
+            // Set error status
+            errorMessage = "Login credentials incorrect.";
+        }
+    }
+}
