@@ -1,0 +1,414 @@
+@page "/admin/users"
+@layout Layout.AdminLayout
+@inject NavigationManager Navigation
+
+<PageTitle>CampusKart Admin - Manage Users</PageTitle>
+
+<style>
+    body {
+        background-color: #fbf9f8;
+        font-family: 'Inter', sans-serif;
+    }
+    .admin-sidebar {
+        width: 280px;
+        background-color: var(--ck-primary-container) !important;
+        z-index: 1000;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .admin-main {
+        margin-left: 280px;
+        min-height: 100vh;
+        background-color: var(--ck-background);
+        padding-top: 64px; /* offset the fixed header */
+    }
+    .sidebar-link {
+        color: rgba(255, 255, 255, 0.75) !important;
+        text-decoration: none;
+        border-radius: 8px;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 4px 12px;
+        font-weight: 500;
+        font-size: 14px;
+        transition: all 0.2s ease-in-out;
+    }
+    .sidebar-link:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: #ffffff !important;
+    }
+    .sidebar-link.active {
+        background-color: rgba(0, 0, 0, 0.25) !important;
+        color: #ffffff !important;
+        font-weight: 600;
+    }
+    .admin-header {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: calc(100% - 280px);
+        height: 64px;
+        background-color: #ffffff;
+        border-bottom: 1px solid var(--ck-border-light);
+        z-index: 900;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+    }
+    .bg-surface-container-low {
+        background-color: #f6f3f2 !important;
+    }
+    .border-outline-variant-30 {
+        border: 1px solid rgba(194, 198, 212, 0.3) !important;
+    }
+    .user-avatar {
+        width: 38px;
+        height: 38px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+    .btn-action-view {
+        background: transparent;
+        color: var(--ck-primary-container);
+        border: 1.5px solid var(--ck-primary-container);
+        font-weight: 700;
+        font-size: 12px;
+        padding: 6px 16px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    .btn-action-view:hover {
+        background-color: var(--ck-primary-container);
+        color: #ffffff;
+    }
+    .btn-action-ban {
+        background: transparent;
+        color: #ba1a1a;
+        border: 1.5px solid #ba1a1a;
+        font-weight: 700;
+        font-size: 12px;
+        padding: 6px 16px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    .btn-action-ban:hover {
+        background-color: #ba1a1a;
+        color: #ffffff;
+    }
+    .btn-action-restore {
+        background: transparent;
+        color: #28a745;
+        border: 1.5px solid #28a745;
+        font-weight: 700;
+        font-size: 12px;
+        padding: 6px 16px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    .btn-action-restore:hover {
+        background-color: #28a745;
+        color: #ffffff;
+    }
+    @@media (max-width: 991.98px) {
+        .admin-sidebar {
+            display: none !important;
+        }
+        .admin-main {
+            margin-left: 0 !important;
+        }
+        .admin-header {
+            width: 100% !important;
+        }
+    }
+</style>
+
+<div class="d-flex">
+    <!-- Left SideNavBar (Full Height) -->
+    <aside class="admin-sidebar position-fixed top-0 start-0 vh-100 d-flex flex-column py-4 text-white">
+        <div class="px-4 mb-4">
+            <h1 class="h4 fw-bold text-white mb-0 tracking-tight">CampusKart</h1>
+            <p class="text-uppercase tracking-wider text-white-50 font-monospace mb-0" style="font-size: 10px;">Admin Portal</p>
+        </div>
+        
+        <nav class="flex-grow-1 d-flex flex-column justify-content-between">
+            <div class="d-flex flex-column">
+                <a class="sidebar-link" href="admin">
+                    <span class="material-symbols-outlined">dashboard</span>
+                    <span>Dashboard</span>
+                </a>
+                <!-- Active Navigation -->
+                <a class="sidebar-link active" href="#" @onclick='() => TriggerAction("Users Management")'>
+                    <span class="material-symbols-outlined">group</span>
+                    <span>Users</span>
+                </a>
+                <a class="sidebar-link" href="#" @onclick='() => TriggerAction("Listings Management")'>
+                    <span class="material-symbols-outlined">sell</span>
+                    <span>Listings</span>
+                </a>
+                <a class="sidebar-link" href="admin/reports">
+                    <span class="material-symbols-outlined">assessment</span>
+                    <span>Reports</span>
+                </a>
+                <a class="sidebar-link" href="#" @onclick='() => TriggerAction("Settings Panel")'>
+                    <span class="material-symbols-outlined">settings</span>
+                    <span>Settings</span>
+                </a>
+            </div>
+            
+            <div class="d-flex flex-column">
+                <a class="sidebar-link" href="">
+                    <span class="material-symbols-outlined">arrow_back</span>
+                    <span>Back to Store</span>
+                </a>
+                <hr class="mx-3 opacity-25" />
+                <div class="px-3 mb-2">
+                    <div class="d-flex align-items-center gap-3 p-2 rounded-3" style="background-color: rgba(255, 255, 255, 0.08);">
+                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-primary fw-bold" style="width: 32px; height: 32px; font-size: 13px;">
+                            A
+                        </div>
+                        <div class="overflow-hidden">
+                            <p class="mb-0 small fw-bold text-white text-truncate">Admin User</p>
+                            <p class="mb-0 text-white-50 text-truncate" style="font-size: 11px;">superadmin@campus.edu</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- TopNavBar & Main Content -->
+    <div class="flex-grow-1">
+        <!-- TopNavBar -->
+        <header class="admin-header border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <h2 class="h6 fw-bold text-dark mb-0">Admin Dashboard</h2>
+                <div class="vr bg-secondary opacity-25" style="height: 18px;"></div>
+                <span class="small text-muted">User Directory</span>
+            </div>
+            
+            <!-- Actions -->
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-link text-secondary p-2 rounded-circle hover-bg-light position-relative border-0" @onclick='() => TriggerAction("Notifications Alert")'>
+                    <span class="material-symbols-outlined" style="font-size: 22px;">notifications</span>
+                    <span class="position-absolute p-1 bg-danger border border-white rounded-circle" style="top: 8px; right: 8px;"></span>
+                </button>
+                <button class="btn btn-link text-secondary p-2 rounded-circle hover-bg-light border-0" @onclick='() => TriggerAction("Profile Account Menu")'>
+                    <span class="material-symbols-outlined" style="font-size: 26px;">account_circle</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="admin-main">
+            <div class="container-fluid p-4" style="max-width: 1120px;">
+                <!-- Simulated Action Alerts -->
+                @if (alertMessage != null)
+                {
+                    <div class="alert alert-@alertType alert-dismissible fade show mb-4 rounded-3 d-flex align-items-center gap-2" role="alert">
+                        <span class="material-symbols-outlined">info</span>
+                        <div>@alertMessage</div>
+                        <button type="button" class="btn-close" @onclick="DismissAlert" aria-label="Close"></button>
+                    </div>
+                }
+
+                <!-- Page Header & Search -->
+                <div class="d-flex flex-column gap-3 mb-4">
+                    <div>
+                        <h1 class="h3 fw-bold text-ck-primary mb-1">Manage Users</h1>
+                        <p class="text-secondary small mb-0">View user verification, account activity states, and manage permissions.</p>
+                    </div>
+                    
+                    <!-- Search Input -->
+                    <div class="position-relative" style="max-width: 640px;">
+                        <span class="material-symbols-outlined position-absolute text-muted" style="left: 14px; top: 50%; transform: translateY(-50%); font-size: 20px;">search</span>
+                        <input type="text" class="form-control ps-5 rounded-3 border border-light py-2.5" style="font-size: 14px; background-color: #ffffff;" placeholder="Filter users by name or email..." @bind="searchQuery" @bind:event="oninput" />
+                    </div>
+                </div>
+
+                <!-- User Table Card -->
+                <div class="card border border-light rounded-3 overflow-hidden bg-white mb-4">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0 text-start">
+                            <thead class="table-light border-bottom border-light">
+                                <tr>
+                                    <th class="px-4 py-3 text-secondary small fw-bold text-uppercase" style="font-size: 11px;">User</th>
+                                    <th class="px-4 py-3 text-secondary small fw-bold text-uppercase" style="font-size: 11px;">Email Address</th>
+                                    <th class="px-4 py-3 text-secondary small fw-bold text-uppercase" style="font-size: 11px;">Joined Date</th>
+                                    <th class="px-4 py-3 text-secondary small fw-bold text-uppercase" style="font-size: 11px;">Status</th>
+                                    <th class="px-4 py-3 text-secondary small fw-bold text-uppercase text-end" style="font-size: 11px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (FilteredUsers.Any())
+                                {
+                                    @foreach (var user in FilteredUsers)
+                                    {
+                                        <tr class="hover-bg-light transition-colors">
+                                            <td class="px-4 py-3">
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <img alt="User Photo" class="user-avatar" src="@user.AvatarUrl" />
+                                                    <span class="fw-bold text-dark" style="font-size: 14px;">@user.Name</span>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3 text-secondary" style="font-size: 14px;">@user.Email</td>
+                                            <td class="px-4 py-3 text-muted" style="font-size: 14px;">@user.JoinedDate</td>
+                                            <td class="px-4 py-3">
+                                                <span class="badge rounded-pill px-2.5 py-1 fw-bold @(user.Status == "Active" ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger")" style="font-size: 11px;">
+                                                    @user.Status
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3 text-end">
+                                                <div class="d-flex justify-content-end gap-2">
+                                                    <button class="btn-action-view" @onclick="() => ViewProfile(user)">View Profile</button>
+                                                    @if (user.Status == "Active")
+                                                    {
+                                                        <button class="btn-action-ban" @onclick="() => ToggleUserBan(user)">Ban</button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <button class="btn-action-restore" @onclick="() => ToggleUserBan(user)">Restore</button>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="5" class="text-center py-5 text-secondary">
+                                            <span class="material-symbols-outlined text-muted mb-2" style="font-size: 40px;">group_off</span>
+                                            <p class="mb-0">No users found matching your search term.</p>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination Footer -->
+                    <div class="card-footer bg-white border-top border-light px-4 py-3 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3">
+                        <p class="text-secondary mb-0" style="font-size: 12px;">Showing @FilteredUsers.Count() of @Users.Count users</p>
+                        <div class="d-flex align-items-center gap-1">
+                            <button class="btn btn-link text-decoration-none text-muted font-weight-bold p-1 border-0" style="font-size: 12px;" @onclick='() => TriggerAction("Previous Page")'>Previous</button>
+                            <button class="btn btn-primary d-flex align-items-center justify-content-center text-white border-0" style="width: 32px; height: 32px; font-size: 12px; font-weight: 700; background-color: var(--ck-primary-container) !important;">1</button>
+                            <button class="btn btn-light d-flex align-items-center justify-content-center hover-bg-light border-0" style="width: 32px; height: 32px; font-size: 12px; font-weight: 700;" @onclick='() => TriggerAction("Page 2")'>2</button>
+                            <button class="btn btn-light d-flex align-items-center justify-content-center hover-bg-light border-0" style="width: 32px; height: 32px; font-size: 12px; font-weight: 700;" @onclick='() => TriggerAction("Page 3")'>3</button>
+                            <span class="text-muted px-1" style="font-size: 12px;">...</span>
+                            <button class="btn btn-link text-decoration-none text-primary font-weight-bold p-1 border-0" style="font-size: 12px;" @onclick='() => TriggerAction("Next Page")'>Next</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+@code {
+    private string searchQuery = "";
+    private string? alertMessage;
+    private string alertType = "info";
+
+    private List<UserItem> Users = new();
+
+    private IEnumerable<UserItem> FilteredUsers => Users
+        .Where(u => 
+            string.IsNullOrWhiteSpace(searchQuery) ||
+            u.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+            u.Email.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)
+        );
+
+    protected override void OnInitialized()
+    {
+        // Populate default users according to the design specifications
+        Users.Add(new UserItem
+        {
+            Name = "Sarah Jenkins",
+            Email = "s.jenkins@campus.edu",
+            JoinedDate = "Oct 12, 2023",
+            Status = "Active",
+            AvatarUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuACaAfDodDu2W3KSv6nhZbwnUsdE67UvAGFulhbfGc_RWDikpxJ7CiudS6ZrZ5lMsa_t5Xfj7lFIk1tDT0Qe0jXZpzcLKGwFUJliMct51icd3anxLt98rCHx-zm1G_EZPkjN4QwcKa4wqNicTRmT9ucGK2L5Uz0coQp0n241xQYRXmjPnRqOntPHL6ip_GNFLCzMc4jLKF04IHg2XTfKSHRmETbNLkvWyiLTuV-vffohRd-Llh_AIggu8X_oS6TP7am3Ow5sjmd5RQ"
+        });
+
+        Users.Add(new UserItem
+        {
+            Name = "Marcus Thorne",
+            Email = "m.thorne@campus.edu",
+            JoinedDate = "Oct 15, 2023",
+            Status = "Banned",
+            AvatarUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuCeVSBWuFFCkV5Xj4NawXkoaZAy342N0yKIlnZAuzSbaPdmwxPeOp_mg893B0tF-AtqANobtkwWQ67aS0FoZHHK11iE43DJ9e83TXj7VrjOM1_Gzg827rwuDFQZwbyqLUiMQRvZl1MYMW0D70Ubk-XOSXgqDBnIFdtKJG0B0kyHLyTWns2He-IaO6W_7n85nvjeL5Ur6sl0KA8y6DREh7aDzbS_SB9ygkf-1qW_TUTIW1HtltpOGcL3787lQDp2JSqYNO6IsqHvuUg"
+        });
+
+        Users.Add(new UserItem
+        {
+            Name = "Leila Rodriguez",
+            Email = "leila.r@campus.edu",
+            JoinedDate = "Oct 20, 2023",
+            Status = "Active",
+            AvatarUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuBC9UaPwhRAp13L4rytv9xlKc9BtN5Bn7buoEQN3Z0LSniCn7NBd9yUkPzzFZbXETp1gU2KIBYWqgSEBWhBjT1Aj6LplrIz7TJhaWGDd6q34jtTAGEe_Yn06y99pLpB-uSM44jJoM9A5Utq1UNeHOzqn5AN7ZA46iSWv4nGKhIMo2BlkECchN2zpvK2lYBmqIZ5eczle5yCMmS5e8YpIxPoFSku_0AdpW_RNNETseqDRNZhjJW4D6Aid-pftDdolZ0O4ER6-yzhjPw"
+        });
+
+        Users.Add(new UserItem
+        {
+            Name = "David Chen",
+            Email = "d.chen@campus.edu",
+            JoinedDate = "Oct 21, 2023",
+            Status = "Active",
+            AvatarUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuCV1XcxuJMYcxdZ60CatcvqQdwaSahDOncm4TyfNojiT85EF-NFVd80vuf992dXWBU4fK8-9Sw1twVwVlnzPEiUW6cXKxaTyC5vgofPKPNdXtD2kZ8TJY3nAKGK_q91BxiHEtb9jbmFaCOnM41zC87G9hPL_8QFQMd0ioiMwJI-X-1UBR6utV3JALgzW4CIpN4utKAXHJlqg6pWonkbCr3CDksxBCCiXI2uytX7zVfqE8z1Ez2fZ-CQYlNhLLPsjqYxfulecP6iBF4"
+        });
+
+        Users.Add(new UserItem
+        {
+            Name = "Maya Patel",
+            Email = "m.patel@campus.edu",
+            JoinedDate = "Oct 24, 2023",
+            Status = "Active",
+            AvatarUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuCqlLoy6LYL0NjVu-JuGq6tyCis-zVlMdIwDVINDc-J_tSco5siz2nkOcUg3adahZDqOvucCQf09wvXO--yVGJ4RqDvE6SqenaJPcDn1trE3_ZE3BxFMS8h-3I7Xcjg75d-5PlbWZDD-2JUhihGVBYOmCJTr1Yp8ZKBYRcuhPl4nqKKQDigZ1O68OCEV9Q5lRbWCNGI9VViLt9nSzAAe--OHwuDSRsUCFmmzEATtB0hWcoWKaHdhb_s-FOaW5r3gxC40ZdMc03EcmI"
+        });
+    }
+
+    private void ToggleUserBan(UserItem user)
+    {
+        if (user.Status == "Active")
+        {
+            user.Status = "Banned";
+            alertMessage = $"User '{user.Name}' has been successfully banned.";
+            alertType = "danger";
+        }
+        else
+        {
+            user.Status = "Active";
+            alertMessage = $"User '{user.Name}' has been successfully restored.";
+            alertType = "success";
+        }
+        StateHasChanged();
+    }
+
+    private void ViewProfile(UserItem user)
+    {
+        alertMessage = $"Simulated Action: Loading profile details for student {user.Name} ({user.Email}).";
+        alertType = "info";
+    }
+
+    private void TriggerAction(string actionName)
+    {
+        alertMessage = $"Simulated Action: '{actionName}' triggered.";
+        alertType = "info";
+    }
+
+    private void DismissAlert()
+    {
+        alertMessage = null;
+    }
+
+    public class UserItem
+    {
+        public string Name { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string JoinedDate { get; set; } = "";
+        public string Status { get; set; } = "Active";
+        public string AvatarUrl { get; set; } = "";
+    }
+}
