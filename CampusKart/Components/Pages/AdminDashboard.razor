@@ -399,7 +399,7 @@
     private int userCount;
     private int listingCount;
     private int activeListingCount;
-    private int pendingReportsCount = 14;
+    private int pendingReportsCount;
 
     private string searchQuery = "";
     private string? alertMessage;
@@ -412,24 +412,17 @@
     {
         try
         {
-            // Fetch live database metrics
+            // Fetch live database metrics without dummy values
             userCount = await DbContext.Users.CountAsync();
-            if (userCount == 0) userCount = 2540; // Fallback to Stitch design value if empty DB
-
             listingCount = await DbContext.Listings.CountAsync();
-            if (listingCount == 0) listingCount = 12890; // Fallback to Stitch design value if empty DB
-
             activeListingCount = await DbContext.Listings.CountAsync(l => l.Status == "Active");
-            if (activeListingCount == 0) activeListingCount = 8420; // Fallback to Stitch design value if empty DB
+            pendingReportsCount = await DbContext.Listings.CountAsync(l => l.Status == "Flagged" || l.Status == "Reported");
 
-            var flaggedCount = await DbContext.Listings.CountAsync(l => l.Status == "Flagged" || l.Status == "Reported");
-            pendingReportsCount = 14 + flaggedCount;
+            // Load bar chart heights dynamically
+            await LoadChartDataAsync();
 
-            // Load bar chart heights
-            LoadChartData();
-
-            // Populate recent activity items
-            LoadActivities(await DbContext.Listings.OrderByDescending(l => l.DatePosted).Take(3).ToListAsync());
+            // Populate recent activity items dynamically
+            await LoadActivitiesAsync();
         }
         catch (Exception ex)
         {
@@ -437,110 +430,111 @@
         }
     }
 
-    private void LoadChartData()
+    private async Task LoadChartDataAsync()
     {
-        var days = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
-        var baseCounts = new[] { 120, 175, 90, 220, 145, 60, 105 };
-        
+        ChartItems.Clear();
         var currentDayOfWeek = DateTime.UtcNow.ToString("ddd");
-        
+        var today = DateTime.UtcNow.Date;
+
+        // Query counts for each of the last 7 days ending today
+        var last7Days = Enumerable.Range(0, 7)
+            .Select(i => today.AddDays(-i))
+            .Reverse()
+            .ToList();
+
         var maxVal = 0;
-        for (int i = 0; i < 7; i++)
+        var dayCounts = new List<(string Day, int Count)>();
+
+        foreach (var date in last7Days)
         {
-            var day = days[i];
-            var count = baseCounts[i];
-            
-            // Slightly vary counts using the db listing count to keep it looking dynamic
-            count += (listingCount % (i + 3)) * 6;
+            var nextDate = date.AddDays(1);
+            var count = await DbContext.Listings.CountAsync(l => l.DatePosted >= date && l.DatePosted < nextDate);
             if (count > maxVal) maxVal = count;
-            
+
+            dayCounts.Add((date.ToString("ddd"), count));
+        }
+
+        foreach (var item in dayCounts)
+        {
             ChartItems.Add(new BarChartItem
             {
-                Day = day,
-                Count = count,
-                IsActive = (day == currentDayOfWeek || (currentDayOfWeek == "Thu" && day == "Thu"))
+                Day = item.Day,
+                Count = item.Count,
+                IsActive = (item.Day == currentDayOfWeek)
             });
         }
-        
+
         foreach (var item in ChartItems)
         {
-            item.HeightPct = maxVal > 0 ? ((double)item.Count / maxVal) * 90 + 10 : 50;
+            item.HeightPct = maxVal > 0 ? ((double)item.Count / maxVal) * 90 + 10 : 10;
         }
     }
 
-    private void LoadActivities(List<Listing> dbRecentListings)
+    private async Task LoadActivitiesAsync()
     {
-        // Add default/mock activities from the design spec
-        Activities.Add(new ActivityItem
-        {
-            User = "Zain Malik",
-            Action = "posted a new listing",
-            Details = "Apple MacBook Pro 2021",
-            TimeAgo = "2 mins ago",
-            Icon = "add",
-            IconBg = "bg-primary",
-            ProfileUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuCjSOcxurZS7ubAh5XRB5OZALghRmM8WLvcIN6UZQNIS9UbDI_V4VBTvgWId26wzGDS5FYsbg6HgPKLEX_AB3c7ob-K5K1iSuGGH34qcc-FR2RYtIOlqaHYrJp5438HENv36X4c6QMkYjdeaBK4eReJ1K3QXTf8C_mDjU0qhd8VtHIxo11rdR0lFpbjXIy1Sau8bplty1tf_8Slj-8nozXlyIYGU58wSdcnzxGUGTNBUUzPipIjsEbvwBfppXxz64y2mGr1vaMwQIo"
-        });
+        Activities.Clear();
+        var tempActivities = new List<(DateTime Date, ActivityItem Item)>();
 
-        Activities.Add(new ActivityItem
-        {
-            User = "SarahK",
-            Action = "was verified",
-            Details = "ID verification completed",
-            TimeAgo = "45 mins ago",
-            Icon = "verified",
-            IconBg = "bg-success",
-            ProfileUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuBrxzsKT3Bmu2fhBFnZaGLsc4YrYK-hgRY64o2mDsuC9wO8cohu669qbaUksVx8xjxQqul9TzsYBPzTgrLymw3CDnOnojGULO5kjrOYUrxsanVItRL0FOn-kbrA2coPrIzs6pzLzkzHhTUKCrQ1_wANY1nd4u93Xz8Ah37O3BAoSH8VxhiHtF8hTD--y_eEeFK4puUt1KCoYAtGxcoolEuf_4bd-6d6BNWxfZ_6UmzFsvAFGoyheMbPcFtqc-MI_moMYjjClNnkGCY"
-        });
+        // 1. Get recent listings
+        var recentListings = await DbContext.Listings
+            .OrderByDescending(l => l.DatePosted)
+            .Take(5)
+            .ToListAsync();
 
-        Activities.Add(new ActivityItem
+        foreach (var listing in recentListings)
         {
-            User = "Listing #8920",
-            Action = "flagged for review",
-            Details = "Reported for 'Suspicious Pricing'",
-            TimeAgo = "2 hours ago",
-            Icon = "report",
-            IconBg = "bg-danger"
-        });
-
-        Activities.Add(new ActivityItem
-        {
-            User = "New Purchase",
-            Action = "completed",
-            Details = "Listing #7741 sold for PKR 4,500",
-            TimeAgo = "5 hours ago",
-            Icon = "shopping_cart",
-            IconBg = "bg-primary",
-            ProfileUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuBzV3B-EszAtd-Qs598CZ1XQA_KmIabrryzxViGHGkH8ftri0dFCNexVqXlVamyFwTbx0AacDAydZ6PgREYg1wSTWdNl56NRRQ0J_7EPZXRMCtAseyyR7-huc925QKfOOxESNaiib0Vf8tq_HRXp6_BUVWIOdcasprW_uoN3IpDcQ_s_usxIqMlFYc6dLvTt23HWf_MZ1TVybHRBEVr9cdBUa4KiPZmSJ7w6V92o2XPWPfuMeMRRVzCbjfFgOJaTXGu9-NSdzQedYI"
-        });
-
-        Activities.Add(new ActivityItem
-        {
-            User = "System",
-            Action = "update scheduled",
-            Details = "Database maintenance at 2 AM",
-            TimeAgo = "12 hours ago",
-            Icon = "system_update",
-            IconBg = "bg-secondary"
-        });
-
-        // Prepend real activity from actual database listings
-        if (dbRecentListings != null)
-        {
-            for (int i = dbRecentListings.Count - 1; i >= 0; i--)
+            tempActivities.Add((listing.DatePosted, new ActivityItem
             {
-                var listing = dbRecentListings[i];
-                Activities.Insert(0, new ActivityItem
+                User = listing.SellerName,
+                Action = listing.Status == "Sold" ? "marked listing as sold" : "posted a new listing",
+                Details = $"{listing.Title} (PKR {listing.Price:N0})",
+                TimeAgo = GetTimeAgo(listing.DatePosted),
+                Icon = listing.Status == "Sold" ? "shopping_cart" : "add",
+                IconBg = listing.Status == "Sold" ? "bg-success" : "bg-primary"
+            }));
+
+            if (listing.Status == "Flagged" || listing.Status == "Reported")
+            {
+                tempActivities.Add((listing.DatePosted.AddSeconds(1), new ActivityItem
                 {
-                    User = listing.SellerName,
-                    Action = "posted a new listing",
-                    Details = $"{listing.Title} (PKR {listing.Price:N0})",
+                    User = $"Listing #{listing.Id}",
+                    Action = "flagged for review",
+                    Details = $"Reported in {listing.Category}",
                     TimeAgo = GetTimeAgo(listing.DatePosted),
-                    Icon = "add",
-                    IconBg = "bg-primary"
-                });
+                    Icon = "report",
+                    IconBg = "bg-danger"
+                }));
             }
         }
+
+        // 2. Get recent users
+        var recentUsers = await DbContext.Users
+            .OrderByDescending(u => u.JoinedDate)
+            .Take(5)
+            .ToListAsync();
+
+        foreach (var user in recentUsers)
+        {
+            tempActivities.Add((user.JoinedDate, new ActivityItem
+            {
+                User = user.FullName ?? user.UserName ?? "New User",
+                Action = "registered a new account",
+                Details = "Completed profile setup",
+                TimeAgo = GetTimeAgo(user.JoinedDate),
+                Icon = "person_add",
+                IconBg = "bg-info",
+                ProfileUrl = user.ProfilePictureUrl
+            }));
+        }
+
+        // Merge, sort, and display top 5
+        var sorted = tempActivities
+            .OrderByDescending(x => x.Date)
+            .Select(x => x.Item)
+            .Take(5)
+            .ToList();
+
+        Activities.AddRange(sorted);
     }
 
     private string GetTimeAgo(DateTime date)
@@ -554,7 +548,7 @@
 
     private void TriggerAction(string actionName)
     {
-        alertMessage = $"Action Simulated: '{actionName}' triggered successfully.";
+        alertMessage = $"Action simulated: '{actionName}' triggered successfully.";
         alertType = "success";
         StateHasChanged();
     }

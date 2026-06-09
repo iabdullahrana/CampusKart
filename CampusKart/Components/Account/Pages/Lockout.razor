@@ -1,8 +1,16 @@
-﻿@page "/Account/Lockout"
+@page "/Account/Lockout"
+@layout CampusKart.Components.Layout.UserLayout
 
-<PageTitle>Locked out</PageTitle>
+<PageTitle>Locked out | CampusKart</PageTitle>
 
-<header>
-    <h1 class="text-danger">Locked out</h1>
-    <p class="text-danger">This account has been locked out, please try again later.</p>
-</header>
+<div class="container py-5 my-5 text-center">
+    <div class="card shadow border-0 p-5 mx-auto" style="max-width: 500px; border-radius: 16px; background-color: #ffffff;">
+        <span class="material-symbols-outlined text-danger mb-3" style="font-size: 80px; font-variation-settings: 'FILL' 1;">lock</span>
+        <h1 class="h3 fw-bold text-ck-primary mb-3">Account Locked Out</h1>
+        <p class="text-secondary mb-4">Your account has been suspended or locked out by campus administrators due to policy violations.</p>
+        <div class="d-flex flex-column gap-2">
+            <a href="mailto:support@campuskart.pk?subject=Appeal Lockout Request" class="btn btn-ck-primary py-3">Contact Administration</a>
+            <a href="" class="btn btn-light py-3 text-secondary">Back to Storefront</a>
+        </div>
+    </div>
+</div>

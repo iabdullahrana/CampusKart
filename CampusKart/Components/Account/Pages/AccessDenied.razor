@@ -1,8 +1,15 @@
-﻿@page "/Account/AccessDenied"
+@page "/Account/AccessDenied"
+@layout CampusKart.Components.Layout.UserLayout
 
-<PageTitle>Access denied</PageTitle>
+<PageTitle>Access Denied | CampusKart</PageTitle>
 
-<header>
-    <h1 class="text-danger">Access denied</h1>
-    <p class="text-danger">You do not have access to this resource.</p>
-</header>
+<div class="container py-5 my-5 text-center">
+    <div class="card shadow border-0 p-5 mx-auto" style="max-width: 500px; border-radius: 16px; background-color: #ffffff;">
+        <span class="material-symbols-outlined text-warning mb-3" style="font-size: 80px; font-variation-settings: 'FILL' 1;">gpp_bad</span>
+        <h1 class="h3 fw-bold text-ck-primary mb-3">Access Denied</h1>
+        <p class="text-secondary mb-4">You do not have the required permissions to access this page.</p>
+        <div class="d-flex flex-column gap-2">
+            <a href="" class="btn btn-ck-primary py-3">Back to Storefront</a>
+        </div>
+    </div>
+</div>

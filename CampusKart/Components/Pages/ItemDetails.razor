@@ -44,6 +44,15 @@
             ? (imageUrls.FirstOrDefault() ?? listing.ImageUrl) 
             : activeImageUrl;
 
+        @if (alertMessage != null)
+        {
+            <div class="alert alert-@alertType alert-dismissible fade show mb-4 rounded-3 d-flex align-items-center gap-2" role="alert">
+                <span class="material-symbols-outlined">@(alertType == "success" ? "check_circle" : "info")</span>
+                <div>@alertMessage</div>
+                <button type="button" class="btn-close" @onclick="DismissAlert" aria-label="Close"></button>
+            </div>
+        }
+
         <!-- Main Product Section -->
         <div class="row g-4 g-lg-5">
             <!-- Left Column: Image Gallery -->
@@ -161,10 +170,10 @@
                     <div class="text-ck-secondary small">
                         Posted @listing.DatePosted.ToString("MMMM dd, yyyy")
                     </div>
-                    <a class="text-decoration-none text-danger small hover-underline d-flex align-items-center gap-1" href="mailto:support@campuskart.edu?subject=Report Listing @listing.Id">
+                    <button class="btn btn-link text-decoration-none text-danger small hover-underline d-flex align-items-center gap-1 p-0 border-0" @onclick="ReportThisListing">
                         <span class="material-symbols-outlined fs-6">report</span>
                         <span>Report Listing</span>
-                    </a>
+                    </button>
                 </div>
             </div>
         </div>
@@ -221,6 +230,8 @@
     private ApplicationUser? sellerUser;
     private string? activeImageUrl;
     private bool isLoading = true;
+    private string? alertMessage;
+    private string alertType = "success";
 
     private void SetMainImage(string url)
     {
@@ -267,5 +278,29 @@
         {
             isLoading = false;
         }
+    }
+
+    private async Task ReportThisListing()
+    {
+        if (listing != null)
+        {
+            try
+            {
+                listing.Status = "Flagged";
+                await DbContext.SaveChangesAsync();
+                alertMessage = "This listing has been successfully reported to the campus moderators for review.";
+                alertType = "success";
+            }
+            catch (Exception ex)
+            {
+                alertMessage = $"Error reporting listing: {ex.Message}";
+                alertType = "danger";
+            }
+        }
+    }
+
+    private void DismissAlert()
+    {
+        alertMessage = null;
     }
 }

@@ -7,5 +7,6 @@ namespace CampusKart.Data
     {
         public string? FullName { get; set; }
         public string? ProfilePictureUrl { get; set; }
+        public DateTime JoinedDate { get; set; } = DateTime.UtcNow;
     }
 }

@@ -356,53 +356,36 @@
              r.Tag.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
         );
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        // Populate standard user reports from the design specification
-        Reports.Add(new ReportItem
-        {
-            Title = "Apple MacBook Pro 2021",
-            Tag = "Fraudulent item",
-            ReportedBy = "Hassan Ali",
-            Date = "Oct 24, 2023",
-            Description = "Seller is asking for payment via external gift cards and refusing to meet on campus. This seems like a scam profile targeting freshmen.",
-            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuDavQq90IfM9N-VF0uQmce9y54n836W6l-dMQ6oy7svJV63Lu4f1DBqWj47Y5rEcQeZHfno0ES_H8sQ_t1fdoGFhDinQJGyFHd_Z8yotvoxFk-DWlckKYtVxrRa9kFvwbtanUWaY-FJzcj5dp_rKSUd0KBgBRGYZZJMBUdENCS_LT5fLMtSya9VNR22PmFlaKVUFiluKizwJ3_rx9a0UzOKZbeGUKpFFODBAdedLhg4Mk07aVuZPfKzsuMKQFHCu5siTngCKJjLYI4",
-            Status = "Pending"
-        });
+        await LoadReportsAsync();
+    }
 
-        Reports.Add(new ReportItem
+    private async Task LoadReportsAsync()
+    {
+        try
         {
-            Title = "Vintage Campus Hoodie",
-            Tag = "Incorrect Price",
-            ReportedBy = "Sarah Khan",
-            Date = "Oct 22, 2023",
-            Description = "The listing says $10 in the title but $100 in the description. User seems to be baiting with low prices.",
-            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuDOEIV3FyvteuGIvD8srkjMGCII2AcCwAnIckpR8WGt-TGp3bx43I6nFuQSPuxfNNdetfa_BgS9p6LCBhLhnx7m_cq0pdlbhcI9n82g-iH4NBzJxS2BIxxv9YrbI-HNoL2gaal1b1JS6_7ehGT11r7gtd2M80gTiZFKgLuX4Mv6rI2LKH5Z-dSp-gPYYt8gnDmAC2CMzODbK33nZQjKA_3ahwYUj9IJs-T7bAAj9KP6eE2BYWq5M7XDBz5c_B1AmmryOPN_Yx7HOK0",
-            Status = "Resolved",
-            ResolutionDate = "on Oct 23"
-        });
+            var flaggedListings = await DbContext.Listings
+                .Where(l => l.Status == "Flagged" || l.Status == "Reported")
+                .ToListAsync();
 
-        Reports.Add(new ReportItem
+            Reports = flaggedListings.Select(l => new ReportItem
+            {
+                Id = l.Id,
+                Title = l.Title,
+                Tag = l.Category,
+                ReportedBy = l.SellerName,
+                Date = l.DatePosted.ToString("MMM dd, yyyy"),
+                Description = l.Description,
+                ImageUrl = !string.IsNullOrEmpty(l.ImageUrl) && l.ImageUrl.Contains(";") ? l.ImageUrl.Split(';')[0] : (l.ImageUrl ?? ""),
+                Status = "Pending"
+            }).ToList();
+        }
+        catch (Exception ex)
         {
-            Title = "Medical Biology Textbook - 12th Ed",
-            Tag = "Spam",
-            ReportedBy = "Hamid Khan",
-            Date = "Oct 21, 2023",
-            Description = "This same user has posted this book 15 times in the last hour. Flooding the 'Books' category and burying other listings.",
-            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuA_BL66j8TEvRqaxOevraAyhvQnJyEfwxLwegI_ZulC0PNt2zqB9xOBxGPDaey-BH8663TrkCsdvaWtpkApJBJai-u7XBBUp2KAQUy4XmdWmJi-i5bErVjPFrIlqom4EGaolyuYxiJmth0BlkkERQHY_sxKr-rpYFMOgPHTTryv1jXCeySGp1hFCRKZ7lzvRvynGjammJYV8jnHA4SvETpq33HOSAHY3nnZQYmfYFy6JQe2nizB2mPPuuWAx5Tzgzp0awNLBKyAjXg",
-            Status = "Pending"
-        });
-
-        Reports.Add(new ReportItem
-        {
-            Title = "Sony Alpha A7III - Body Only",
-            Tag = "Fraudulent item",
-            ReportedBy = "Javaid Ali",
-            Date = "Oct 20, 2023",
-            Description = "Price is suspiciously low ($200) for a camera that retails at $1500+. Photos are stock images found on Amazon.",
-            ImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuDlqrl10jxRGCwmXFjNFuzNbFk1r1RoQL_EvqlHQjpmKBflZ5Ns1kQNgNx_WCiZLSYQJwRePVKQPWt0rg4adWGNgJNdPbTlFlHA_5E0QumJpGL4NoWa1_goRVybllT4Zk-N4JJKboMcWF3MXc6LCd4NTF5txb-1mFoSDIhCRIFPxgTWlds-0dRcNqgTCnKi1Qke9w2ch1Mplf7YI_dd_pzu17V-0djyxgtCyPNEbSNjc2zSYyj3kNP7BIa8WUPgcMc3LBhSZDiJGFo",
-            Status = "Pending"
-        });
+            alertMessage = $"Error loading reports: {ex.Message}";
+            alertType = "danger";
+        }
     }
 
     private void SetActiveTab(string tabName)
@@ -411,20 +394,60 @@
         DismissAlert();
     }
 
-    private void ApproveAndRemove(ReportItem report)
+    private async Task ApproveAndRemove(ReportItem report)
     {
-        Reports.Remove(report);
-        alertMessage = $"Listing for '{report.Title}' has been approved for removal and removed from listings.";
-        alertType = "success";
+        try
+        {
+            var listing = await DbContext.Listings.FindAsync(report.Id);
+            if (listing != null)
+            {
+                DbContext.Listings.Remove(listing);
+                await DbContext.SaveChangesAsync();
+
+                Reports.Remove(report);
+                alertMessage = $"Listing for '{report.Title}' has been approved for removal and deleted from the database.";
+                alertType = "success";
+            }
+            else
+            {
+                alertMessage = "Listing not found in the database.";
+                alertType = "warning";
+            }
+        }
+        catch (Exception ex)
+        {
+            alertMessage = $"Error removing listing: {ex.Message}";
+            alertType = "danger";
+        }
         StateHasChanged();
     }
 
-    private void DismissReport(ReportItem report)
+    private async Task DismissReport(ReportItem report)
     {
-        report.Status = "Resolved";
-        report.ResolutionDate = "on " + DateTime.UtcNow.ToString("MMM dd, yyyy");
-        alertMessage = $"Report for '{report.Title}' has been dismissed. The item remains active on the store.";
-        alertType = "success";
+        try
+        {
+            var listing = await DbContext.Listings.FindAsync(report.Id);
+            if (listing != null)
+            {
+                listing.Status = "Active";
+                await DbContext.SaveChangesAsync();
+
+                report.Status = "Resolved";
+                report.ResolutionDate = "on " + DateTime.UtcNow.ToString("MMM dd, yyyy");
+                alertMessage = $"Report for '{report.Title}' has been dismissed. The item remains active on the store.";
+                alertType = "success";
+            }
+            else
+            {
+                alertMessage = "Listing not found in the database.";
+                alertType = "warning";
+            }
+        }
+        catch (Exception ex)
+        {
+            alertMessage = $"Error dismissing report: {ex.Message}";
+            alertType = "danger";
+        }
         StateHasChanged();
     }
 
@@ -458,6 +481,7 @@
 
     public class ReportItem
     {
+        public int Id { get; set; }
         public string Title { get; set; } = "";
         public string Tag { get; set; } = "";
         public string ReportedBy { get; set; } = "";

@@ -1,6 +1,10 @@
 @page "/admin/users"
 @layout Layout.AdminLayout
 @inject NavigationManager Navigation
+@inject CampusKart.Data.ApplicationDbContext DbContext
+@using Microsoft.EntityFrameworkCore
+@using CampusKart.Data
+
 
 <PageTitle>CampusKart Admin - Manage Users</PageTitle>
 
@@ -320,68 +324,70 @@
             u.Email.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)
         );
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        // Populate default users according to the design specifications
-        Users.Add(new UserItem
-        {
-            Name = "Sarah Jenkins",
-            Email = "s.jenkins@campus.edu",
-            JoinedDate = "Oct 12, 2023",
-            Status = "Active",
-            AvatarUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuACaAfDodDu2W3KSv6nhZbwnUsdE67UvAGFulhbfGc_RWDikpxJ7CiudS6ZrZ5lMsa_t5Xfj7lFIk1tDT0Qe0jXZpzcLKGwFUJliMct51icd3anxLt98rCHx-zm1G_EZPkjN4QwcKa4wqNicTRmT9ucGK2L5Uz0coQp0n241xQYRXmjPnRqOntPHL6ip_GNFLCzMc4jLKF04IHg2XTfKSHRmETbNLkvWyiLTuV-vffohRd-Llh_AIggu8X_oS6TP7am3Ow5sjmd5RQ"
-        });
-
-        Users.Add(new UserItem
-        {
-            Name = "Marcus Thorne",
-            Email = "m.thorne@campus.edu",
-            JoinedDate = "Oct 15, 2023",
-            Status = "Banned",
-            AvatarUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuCeVSBWuFFCkV5Xj4NawXkoaZAy342N0yKIlnZAuzSbaPdmwxPeOp_mg893B0tF-AtqANobtkwWQ67aS0FoZHHK11iE43DJ9e83TXj7VrjOM1_Gzg827rwuDFQZwbyqLUiMQRvZl1MYMW0D70Ubk-XOSXgqDBnIFdtKJG0B0kyHLyTWns2He-IaO6W_7n85nvjeL5Ur6sl0KA8y6DREh7aDzbS_SB9ygkf-1qW_TUTIW1HtltpOGcL3787lQDp2JSqYNO6IsqHvuUg"
-        });
-
-        Users.Add(new UserItem
-        {
-            Name = "Leila Rodriguez",
-            Email = "leila.r@campus.edu",
-            JoinedDate = "Oct 20, 2023",
-            Status = "Active",
-            AvatarUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuBC9UaPwhRAp13L4rytv9xlKc9BtN5Bn7buoEQN3Z0LSniCn7NBd9yUkPzzFZbXETp1gU2KIBYWqgSEBWhBjT1Aj6LplrIz7TJhaWGDd6q34jtTAGEe_Yn06y99pLpB-uSM44jJoM9A5Utq1UNeHOzqn5AN7ZA46iSWv4nGKhIMo2BlkECchN2zpvK2lYBmqIZ5eczle5yCMmS5e8YpIxPoFSku_0AdpW_RNNETseqDRNZhjJW4D6Aid-pftDdolZ0O4ER6-yzhjPw"
-        });
-
-        Users.Add(new UserItem
-        {
-            Name = "David Chen",
-            Email = "d.chen@campus.edu",
-            JoinedDate = "Oct 21, 2023",
-            Status = "Active",
-            AvatarUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuCV1XcxuJMYcxdZ60CatcvqQdwaSahDOncm4TyfNojiT85EF-NFVd80vuf992dXWBU4fK8-9Sw1twVwVlnzPEiUW6cXKxaTyC5vgofPKPNdXtD2kZ8TJY3nAKGK_q91BxiHEtb9jbmFaCOnM41zC87G9hPL_8QFQMd0ioiMwJI-X-1UBR6utV3JALgzW4CIpN4utKAXHJlqg6pWonkbCr3CDksxBCCiXI2uytX7zVfqE8z1Ez2fZ-CQYlNhLLPsjqYxfulecP6iBF4"
-        });
-
-        Users.Add(new UserItem
-        {
-            Name = "Maya Patel",
-            Email = "m.patel@campus.edu",
-            JoinedDate = "Oct 24, 2023",
-            Status = "Active",
-            AvatarUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuCqlLoy6LYL0NjVu-JuGq6tyCis-zVlMdIwDVINDc-J_tSco5siz2nkOcUg3adahZDqOvucCQf09wvXO--yVGJ4RqDvE6SqenaJPcDn1trE3_ZE3BxFMS8h-3I7Xcjg75d-5PlbWZDD-2JUhihGVBYOmCJTr1Yp8ZKBYRcuhPl4nqKKQDigZ1O68OCEV9Q5lRbWCNGI9VViLt9nSzAAe--OHwuDSRsUCFmmzEATtB0hWcoWKaHdhb_s-FOaW5r3gxC40ZdMc03EcmI"
-        });
+        await LoadUsersAsync();
     }
 
-    private void ToggleUserBan(UserItem user)
+    private async Task LoadUsersAsync()
     {
-        if (user.Status == "Active")
+        try
         {
-            user.Status = "Banned";
-            alertMessage = $"User '{user.Name}' has been successfully banned.";
+            var dbUsers = await DbContext.Users.ToListAsync();
+            Users = dbUsers.Select(u => new UserItem
+            {
+                Id = u.Id,
+                Name = u.FullName ?? u.UserName ?? "Unnamed User",
+                Email = u.Email ?? "",
+                JoinedDate = u.JoinedDate.ToString("MMM dd, yyyy"),
+                Status = (u.LockoutEnd != null && u.LockoutEnd > DateTimeOffset.UtcNow) ? "Banned" : "Active",
+                AvatarUrl = string.IsNullOrWhiteSpace(u.ProfilePictureUrl) 
+                    ? "https://lh3.googleusercontent.com/aida-public/AB6AXuCDy0OIDr1LoHbqjsoD-Ukkspd69TnqGuZYkCPycLZc2UmOHgqFuxMgDGcpArF2XFB90T_7JrHxLGkLnPYirKyTILy17_Vrnk__0Tc21mEnoqGRhbPd2unx9cuH4S2xHpLvtXVWlEESqGZoyAY2JT-IuSs1YbiRKfxDEQy1Ee0DlP4RwvA_fvHmPOEoroqYUJ-hZZBJVFgt0PrbnLoq_VTigQjqCqKtR-_ceuvyjYVN1ywhb9fXz3jifyObKXympclmCtH7QfFF6zA" 
+                    : u.ProfilePictureUrl
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            alertMessage = $"Error loading users: {ex.Message}";
             alertType = "danger";
         }
-        else
+    }
+
+    private async Task ToggleUserBan(UserItem user)
+    {
+        try
         {
-            user.Status = "Active";
-            alertMessage = $"User '{user.Name}' has been successfully restored.";
-            alertType = "success";
+            var dbUser = await DbContext.Users.FirstOrDefaultAsync(u => u.Id == user.Id);
+            if (dbUser != null)
+            {
+                if (user.Status == "Active")
+                {
+                    dbUser.LockoutEnd = DateTimeOffset.MaxValue;
+                    dbUser.LockoutEnabled = true;
+                    await DbContext.SaveChangesAsync();
+                    user.Status = "Banned";
+                    alertMessage = $"User '{user.Name}' has been successfully banned.";
+                    alertType = "danger";
+                }
+                else
+                {
+                    dbUser.LockoutEnd = null;
+                    await DbContext.SaveChangesAsync();
+                    user.Status = "Active";
+                    alertMessage = $"User '{user.Name}' has been successfully restored.";
+                    alertType = "success";
+                }
+            }
+            else
+            {
+                alertMessage = "User not found in database.";
+                alertType = "warning";
+            }
+        }
+        catch (Exception ex)
+        {
+            alertMessage = $"Error toggling user ban: {ex.Message}";
+            alertType = "danger";
         }
         StateHasChanged();
     }
@@ -405,6 +411,7 @@
 
     public class UserItem
     {
+        public string Id { get; set; } = "";
         public string Name { get; set; } = "";
         public string Email { get; set; } = "";
         public string JoinedDate { get; set; } = "";
