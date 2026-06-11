@@ -282,12 +282,6 @@
                     <li class="nav-item">
                         <button class="nav-link @(activeTab == "Active" ? "active" : "")" @onclick='() => SetActiveTab("Active")'>Active</button>
                     </li>
-                    <li class="nav-item">
-                        <button class="nav-link @(activeTab == "Rejected" ? "active" : "")" @onclick='() => SetActiveTab("Rejected")'>Rejected</button>
-                    </li>
-                    <li class="nav-item">
-                        <button class="nav-link @(activeTab == "Reported" ? "active" : "")" @onclick='() => SetActiveTab("Reported")'>Reported</button>
-                    </li>
                 </ul>
 
                 <!-- Listings Table Card -->
@@ -368,17 +362,7 @@
                                                     }
                                                     else if (activeTab == "Active")
                                                     {
-                                                        <button class="btn-action-flag" @onclick='() => SetListingStatus(item, "Flagged")'>Flag</button>
                                                         <button class="btn-action-reject" @onclick='() => SetListingStatus(item, "Rejected")'>Reject</button>
-                                                    }
-                                                    else if (activeTab == "Rejected")
-                                                    {
-                                                        <button class="btn-action-approve" @onclick='() => SetListingStatus(item, "Active")'>Restore</button>
-                                                    }
-                                                    else if (activeTab == "Reported")
-                                                    {
-                                                        <button class="btn-action-approve" @onclick='() => SetListingStatus(item, "Active")'>Keep Active</button>
-                                                        <button class="btn-action-delete" @onclick="() => DeleteListing(item)">Remove</button>
                                                     }
                                                 </div>
                                             </td>
@@ -442,14 +426,6 @@
             {
                 activeTab = "Active";
             }
-            else if (AllListings.Any(l => IsInTab(l, "Reported")))
-            {
-                activeTab = "Reported";
-            }
-            else if (AllListings.Any(l => IsInTab(l, "Rejected")))
-            {
-                activeTab = "Rejected";
-            }
         }
     }
 
@@ -474,8 +450,6 @@
         {
             "Pending" => l.Status == "Pending",
             "Active" => l.Status == "Active" || string.IsNullOrEmpty(l.Status),
-            "Rejected" => l.Status == "Rejected",
-            "Reported" => l.Status == "Flagged" || l.Status == "Reported",
             _ => false
         };
     }

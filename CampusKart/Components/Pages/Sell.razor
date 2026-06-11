@@ -21,17 +21,17 @@
 
                 @if (isSuccessState)
                 {
-                    <!-- Elegant Listing Posted Success Toast banner -->
+                    <!-- Elegant Listing Submitted Success Toast banner -->
                     <div class="alert alert-success border-0 rounded-3 p-4 mb-4 d-flex align-items-start gap-3 animate-fade-in shadow-sm" 
                          style="background-color: rgba(40, 167, 69, 0.08); color: #28a745;" role="alert">
                         <span class="material-symbols-outlined fs-2 mt-1">check_circle</span>
                         <div>
-                            <h4 class="fw-bold m-0 fs-5">Listing Posted Successfully!</h4>
+                            <h4 class="fw-bold m-0 fs-5">Listing Submitted Successfully!</h4>
                             <p class="mb-0 mt-2 small text-ck-secondary" style="color: #2e7d32 !important;">
-                                Your item <strong>"@postedItemTitle"</strong> is now live on the marketplace.
+                                Your item <strong>"@postedItemTitle"</strong> has been sent to the admin for approval.
                             </p>
                             <p class="mb-0 mt-3 small fw-bold">
-                                Redirecting you to the marketplace feed in a moment...
+                                Redirecting you to your listings in a moment...
                             </p>
                         </div>
                     </div>
@@ -498,6 +498,7 @@
             SellerName = name,
             SellerEmail = email,
             Location = string.IsNullOrWhiteSpace(formModel.Location) ? "Main Campus Library, Gate 2" : formModel.Location,
+            Status = "Pending",
             DatePosted = DateTime.UtcNow
         };
 
@@ -514,9 +515,9 @@
             selectedImagePreviews.Clear();
             selectedFilesData.Clear();
 
-            // Standby for 3 seconds, then navigate user directly to browse page to see their listings
+            // Standby for 3 seconds, then navigate user directly to listings page to see their listings status
             await Task.Delay(3000);
-            Navigation.NavigateTo("browse");
+            Navigation.NavigateTo("listings");
         }
         catch (Exception ex)
         {
