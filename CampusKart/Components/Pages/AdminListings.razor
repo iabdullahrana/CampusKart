@@ -1,0 +1,585 @@
+@page "/admin/listings"
+@layout Layout.AdminLayout
+@inject CampusKart.Data.ApplicationDbContext DbContext
+@using Microsoft.EntityFrameworkCore
+@using CampusKart.Data
+
+<PageTitle>CampusKart Admin - Manage Listings</PageTitle>
+
+<style>
+    body {
+        background-color: #fbf9f8;
+        font-family: 'Inter', sans-serif;
+    }
+    .admin-sidebar {
+        width: 280px;
+        background-color: var(--ck-primary-container) !important;
+        z-index: 1000;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .admin-main {
+        margin-left: 280px;
+        min-height: 100vh;
+        background-color: var(--ck-background);
+        padding-top: 64px; /* offset the fixed header */
+    }
+    .sidebar-link {
+        color: rgba(255, 255, 255, 0.75) !important;
+        text-decoration: none;
+        border-radius: 8px;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 4px 12px;
+        font-weight: 500;
+        font-size: 14px;
+        transition: all 0.2s ease-in-out;
+    }
+    .sidebar-link:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: #ffffff !important;
+    }
+    .sidebar-link.active {
+        background-color: rgba(0, 0, 0, 0.25) !important;
+        color: #ffffff !important;
+        font-weight: 600;
+    }
+    .admin-header {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: calc(100% - 280px);
+        height: 64px;
+        background-color: #ffffff;
+        border-bottom: 1px solid var(--ck-border-light);
+        z-index: 900;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+    }
+    .bg-surface-container-low {
+        background-color: #f6f3f2 !important;
+    }
+    .border-outline-variant-30 {
+        border: 1px solid rgba(194, 198, 212, 0.3) !important;
+    }
+    .listing-thumbnail {
+        width: 56px;
+        height: 56px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid var(--ck-border-light);
+    }
+    .btn-action-approve {
+        background: transparent;
+        color: #28a745;
+        border: 1.5px solid #28a745;
+        font-weight: 700;
+        font-size: 12px;
+        padding: 6px 16px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    .btn-action-approve:hover {
+        background-color: #28a745;
+        color: #ffffff;
+    }
+    .btn-action-reject {
+        background: transparent;
+        color: #ba1a1a;
+        border: 1.5px solid #ba1a1a;
+        font-weight: 700;
+        font-size: 12px;
+        padding: 6px 16px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    .btn-action-reject:hover {
+        background-color: #ba1a1a;
+        color: #ffffff;
+    }
+    .btn-action-flag {
+        background: transparent;
+        color: #ffc107;
+        border: 1.5px solid #ffc107;
+        font-weight: 700;
+        font-size: 12px;
+        padding: 6px 16px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    .btn-action-flag:hover {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    .btn-action-delete {
+        background: #ba1a1a;
+        color: #ffffff;
+        border: 1.5px solid #ba1a1a;
+        font-weight: 700;
+        font-size: 12px;
+        padding: 6px 16px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    .btn-action-delete:hover {
+        background-color: #93000a;
+        border-color: #93000a;
+    }
+    .nav-tabs .nav-link {
+        border: none;
+        font-weight: 600;
+        font-size: 14px;
+        padding: 12px 20px;
+        background: transparent;
+        color: var(--ck-secondary);
+        transition: all 0.2s ease-in-out;
+        border-bottom: 2px solid transparent;
+    }
+    .nav-tabs .nav-link:hover {
+        color: var(--ck-primary);
+        border-bottom: 2px solid var(--ck-border-light);
+    }
+    .nav-tabs .nav-link.active {
+        border-bottom: 2px solid var(--ck-primary-container) !important;
+        color: var(--ck-primary-container) !important;
+    }
+    .avatar-initials {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        color: #003f87;
+        background-color: #d7e2ff;
+    }
+    @@media (max-width: 991.98px) {
+        .admin-sidebar {
+            display: none !important;
+        }
+        .admin-main {
+            margin-left: 0 !important;
+        }
+        .admin-header {
+            width: 100% !important;
+        }
+    }
+</style>
+
+<div class="d-flex">
+    <!-- Left SideNavBar (Full Height) -->
+    <aside class="admin-sidebar position-fixed top-0 start-0 vh-100 d-flex flex-column py-4 text-white">
+        <div class="px-4 mb-4">
+            <h1 class="h4 fw-bold text-white mb-0 tracking-tight">CampusKart</h1>
+            <p class="text-uppercase tracking-wider text-white-50 font-monospace mb-0" style="font-size: 10px;">Admin Portal</p>
+        </div>
+        
+        <nav class="flex-grow-1 d-flex flex-column justify-content-between">
+            <div class="d-flex flex-column">
+                <a class="sidebar-link" href="admin">
+                    <span class="material-symbols-outlined">dashboard</span>
+                    <span>Dashboard</span>
+                </a>
+                <a class="sidebar-link" href="admin/users">
+                    <span class="material-symbols-outlined">group</span>
+                    <span>Users</span>
+                </a>
+                <!-- Active Navigation -->
+                <a class="sidebar-link active" href="admin/listings">
+                    <span class="material-symbols-outlined">sell</span>
+                    <span>Listings</span>
+                </a>
+                <a class="sidebar-link" href="admin/reports">
+                    <span class="material-symbols-outlined">assessment</span>
+                    <span>Reports</span>
+                </a>
+                <a class="sidebar-link" href="#" @onclick='() => TriggerAction("Settings Panel")'>
+                    <span class="material-symbols-outlined">settings</span>
+                    <span>Settings</span>
+                </a>
+            </div>
+            
+            <div class="d-flex flex-column">
+                <a class="sidebar-link" href="">
+                    <span class="material-symbols-outlined">arrow_back</span>
+                    <span>Back to Store</span>
+                </a>
+                <hr class="mx-3 opacity-25" />
+                <div class="px-3 mb-2">
+                    <div class="d-flex align-items-center gap-3 p-2 rounded-3" style="background-color: rgba(255, 255, 255, 0.08);">
+                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-primary fw-bold" style="width: 32px; height: 32px; font-size: 13px;">
+                            A
+                        </div>
+                        <div class="overflow-hidden">
+                            <p class="mb-0 small fw-bold text-white text-truncate">Admin User</p>
+                            <p class="mb-0 text-white-50 text-truncate" style="font-size: 11px;">superadmin@campus.edu</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- TopNavBar & Main Content -->
+    <div class="flex-grow-1">
+        <!-- TopNavBar -->
+        <header class="admin-header border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <h2 class="h6 fw-bold text-dark mb-0">Admin Dashboard</h2>
+                <div class="vr bg-secondary opacity-25" style="height: 18px;"></div>
+                <span class="small text-muted">Listings Management</span>
+            </div>
+            
+            <!-- Actions -->
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-link text-secondary p-2 rounded-circle hover-bg-light position-relative border-0" @onclick='() => TriggerAction("Notifications Alert")'>
+                    <span class="material-symbols-outlined" style="font-size: 22px;">notifications</span>
+                    <span class="position-absolute p-1 bg-danger border border-white rounded-circle" style="top: 8px; right: 8px;"></span>
+                </button>
+                <button class="btn btn-link text-secondary p-2 rounded-circle hover-bg-light border-0" @onclick='() => TriggerAction("Profile Account Menu")'>
+                    <span class="material-symbols-outlined" style="font-size: 26px;">account_circle</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="admin-main">
+            <div class="container-fluid p-4" style="max-width: 1120px;">
+                <!-- Action Alerts -->
+                @if (alertMessage != null)
+                {
+                    <div class="alert alert-@alertType alert-dismissible fade show mb-4 rounded-3 d-flex align-items-center gap-2" role="alert">
+                        <span class="material-symbols-outlined">info</span>
+                        <div>@alertMessage</div>
+                        <button type="button" class="btn-close" @onclick="DismissAlert" aria-label="Close"></button>
+                    </div>
+                }
+
+                <!-- Page Header & Search -->
+                <div class="d-flex flex-column gap-3 mb-4">
+                    <div>
+                        <h1 class="h3 fw-bold text-ck-primary mb-1">Manage Listings</h1>
+                        <p class="text-secondary small mb-0">Review and moderate marketplace items across all campus categories.</p>
+                    </div>
+                    
+                    <!-- Search Input -->
+                    <div class="position-relative" style="max-width: 640px;">
+                        <span class="material-symbols-outlined position-absolute text-muted" style="left: 14px; top: 50%; transform: translateY(-50%); font-size: 20px;">search</span>
+                        <input type="text" class="form-control ps-5 rounded-3 border border-light py-2.5" style="font-size: 14px; background-color: #ffffff;" placeholder="Search for items, sellers, or IDs..." @bind="searchQuery" @bind:event="oninput" />
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <ul class="nav nav-tabs border-bottom mb-4">
+                    <li class="nav-item">
+                        <button class="nav-link @(activeTab == "Pending" ? "active" : "")" @onclick='() => SetActiveTab("Pending")'>Pending Approval</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link @(activeTab == "Active" ? "active" : "")" @onclick='() => SetActiveTab("Active")'>Active</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link @(activeTab == "Rejected" ? "active" : "")" @onclick='() => SetActiveTab("Rejected")'>Rejected</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link @(activeTab == "Reported" ? "active" : "")" @onclick='() => SetActiveTab("Reported")'>Reported</button>
+                    </li>
+                </ul>
+
+                <!-- Listings Table Card -->
+                <div class="card border border-light rounded-3 overflow-hidden bg-white mb-4">
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0 text-start">
+                            <thead class="table-light border-bottom border-light">
+                                <tr>
+                                    <th class="px-4 py-3 text-secondary small fw-bold text-uppercase" style="font-size: 11px;">Item Details</th>
+                                    <th class="px-4 py-3 text-secondary small fw-bold text-uppercase" style="font-size: 11px;">Seller</th>
+                                    <th class="px-4 py-3 text-secondary small fw-bold text-uppercase" style="font-size: 11px;">Price</th>
+                                    <th class="px-4 py-3 text-secondary small fw-bold text-uppercase" style="font-size: 11px;">Date Submitted</th>
+                                    <th class="px-4 py-3 text-secondary small fw-bold text-uppercase" style="font-size: 11px;">Category</th>
+                                    <th class="px-4 py-3 text-secondary small fw-bold text-uppercase text-end" style="font-size: 11px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (FilteredListings.Any())
+                                {
+                                    @foreach (var item in FilteredListings)
+                                    {
+                                        <tr class="hover-bg-light transition-colors">
+                                            <!-- Item Details -->
+                                            <td class="px-4 py-3">
+                                                <div class="d-flex align-items-center gap-3">
+                                                    @if (!string.IsNullOrEmpty(item.ImageUrl))
+                                                    {
+                                                        var firstUrl = item.ImageUrl.Contains(";") ? item.ImageUrl.Split(';')[0] : item.ImageUrl;
+                                                        <img alt="Item Photo" class="listing-thumbnail" src="@firstUrl" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="listing-thumbnail d-flex align-items-center justify-content-center bg-light">
+                                                            <span class="material-symbols-outlined text-secondary fs-4">image</span>
+                                                        </div>
+                                                    }
+                                                    <div>
+                                                        <span class="fw-bold text-dark d-block" style="font-size: 14px;">@item.Title</span>
+                                                        <span class="text-muted small" style="font-size: 11px;">ID: #@item.Id</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <!-- Seller -->
+                                            <td class="px-4 py-3">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="avatar-initials">
+                                                        @GetInitials(item.SellerName)
+                                                    </div>
+                                                    <span class="text-dark" style="font-size: 14px;">@item.SellerName</span>
+                                                </div>
+                                            </td>
+
+                                            <!-- Price -->
+                                            <td class="px-4 py-3 fw-semibold text-dark" style="font-size: 14px;">
+                                                PKR @item.Price.ToString("N0")
+                                            </td>
+
+                                            <!-- Date Posted -->
+                                            <td class="px-4 py-3 text-muted" style="font-size: 14px;">
+                                                @GetRelativeTime(item.DatePosted)
+                                            </td>
+
+                                            <!-- Category -->
+                                            <td class="px-4 py-3">
+                                                <span class="badge bg-light text-secondary border border-light font-semibold px-2.5 py-1.5" style="font-size: 11px; border-radius: 6px;">
+                                                    @item.Category
+                                                </span>
+                                            </td>
+
+                                            <!-- Actions -->
+                                            <td class="px-4 py-3 text-end">
+                                                <div class="d-flex justify-content-end gap-2">
+                                                    @if (activeTab == "Pending")
+                                                    {
+                                                        <button class="btn-action-approve" @onclick='() => SetListingStatus(item, "Active")'>Approve</button>
+                                                        <button class="btn-action-reject" @onclick='() => SetListingStatus(item, "Rejected")'>Reject</button>
+                                                    }
+                                                    else if (activeTab == "Active")
+                                                    {
+                                                        <button class="btn-action-flag" @onclick='() => SetListingStatus(item, "Flagged")'>Flag</button>
+                                                        <button class="btn-action-reject" @onclick='() => SetListingStatus(item, "Rejected")'>Reject</button>
+                                                    }
+                                                    else if (activeTab == "Rejected")
+                                                    {
+                                                        <button class="btn-action-approve" @onclick='() => SetListingStatus(item, "Active")'>Restore</button>
+                                                    }
+                                                    else if (activeTab == "Reported")
+                                                    {
+                                                        <button class="btn-action-approve" @onclick='() => SetListingStatus(item, "Active")'>Keep Active</button>
+                                                        <button class="btn-action-delete" @onclick="() => DeleteListing(item)">Remove</button>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="6" class="text-center py-5 text-secondary">
+                                            <span class="material-symbols-outlined text-muted mb-2" style="font-size: 40px;">inventory</span>
+                                            <p class="mb-0">No @activeTab.ToLower() listings found.</p>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination Footer -->
+                    <div class="card-footer bg-white border-top border-light px-4 py-3 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3">
+                        <p class="text-secondary mb-0" style="font-size: 12px;">Showing @FilteredListings.Count() of @AllListings.Count(l => IsInTab(l, activeTab)) @activeTab.ToLower() listings</p>
+                        <div class="d-flex align-items-center gap-1">
+                            <button class="btn btn-link text-decoration-none text-muted font-weight-bold p-1 border-0" style="font-size: 12px;" @onclick='() => TriggerAction("Previous Page")'>Previous</button>
+                            <button class="btn btn-primary d-flex align-items-center justify-content-center text-white border-0" style="width: 32px; height: 32px; font-size: 12px; font-weight: 700; background-color: var(--ck-primary-container) !important;">1</button>
+                            <button class="btn btn-link text-decoration-none text-primary font-weight-bold p-1 border-0" style="font-size: 12px;" @onclick='() => TriggerAction("Next Page")'>Next</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+@code {
+    private string activeTab = "Pending";
+    private string searchQuery = "";
+    private string? alertMessage;
+    private string alertType = "info";
+
+    private List<Listing> AllListings = new();
+
+    private IEnumerable<Listing> FilteredListings => AllListings
+        .Where(l => IsInTab(l, activeTab))
+        .Where(l => 
+            string.IsNullOrWhiteSpace(searchQuery) ||
+            l.Title.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+            l.SellerName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+            l.Id.ToString().Contains(searchQuery)
+        );
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadListingsAsync();
+        
+        // If there are no Pending listings, check if we have other lists to display first
+        var pendingCount = AllListings.Count(l => IsInTab(l, "Pending"));
+        if (pendingCount == 0)
+        {
+            if (AllListings.Any(l => IsInTab(l, "Active")))
+            {
+                activeTab = "Active";
+            }
+            else if (AllListings.Any(l => IsInTab(l, "Reported")))
+            {
+                activeTab = "Reported";
+            }
+            else if (AllListings.Any(l => IsInTab(l, "Rejected")))
+            {
+                activeTab = "Rejected";
+            }
+        }
+    }
+
+    private async Task LoadListingsAsync()
+    {
+        try
+        {
+            AllListings = await DbContext.Listings
+                .OrderByDescending(l => l.DatePosted)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            alertMessage = $"Error loading listings: {ex.Message}";
+            alertType = "danger";
+        }
+    }
+
+    private bool IsInTab(Listing l, string tab)
+    {
+        return tab switch
+        {
+            "Pending" => l.Status == "Pending",
+            "Active" => l.Status == "Active" || string.IsNullOrEmpty(l.Status),
+            "Rejected" => l.Status == "Rejected",
+            "Reported" => l.Status == "Flagged" || l.Status == "Reported",
+            _ => false
+        };
+    }
+
+    private void SetActiveTab(string tabName)
+    {
+        activeTab = tabName;
+        DismissAlert();
+    }
+
+    private async Task SetListingStatus(Listing item, string newStatus)
+    {
+        try
+        {
+            var listing = await DbContext.Listings.FindAsync(item.Id);
+            if (listing != null)
+            {
+                listing.Status = newStatus;
+                await DbContext.SaveChangesAsync();
+
+                item.Status = newStatus;
+                
+                string actionText = newStatus switch
+                {
+                    "Active" => "approved & published",
+                    "Rejected" => "rejected",
+                    "Flagged" => "flagged for moderation review",
+                    _ => $"updated to status '{newStatus}'"
+                };
+
+                alertMessage = $"Listing #{item.Id} for '{item.Title}' has been successfully {actionText}.";
+                alertType = newStatus == "Rejected" ? "danger" : (newStatus == "Flagged" ? "warning" : "success");
+            }
+            else
+            {
+                alertMessage = "Listing not found in the database.";
+                alertType = "warning";
+            }
+        }
+        catch (Exception ex)
+        {
+            alertMessage = $"Error updating listing status: {ex.Message}";
+            alertType = "danger";
+        }
+        StateHasChanged();
+    }
+
+    private async Task DeleteListing(Listing item)
+    {
+        try
+        {
+            var listing = await DbContext.Listings.FindAsync(item.Id);
+            if (listing != null)
+            {
+                DbContext.Listings.Remove(listing);
+                await DbContext.SaveChangesAsync();
+
+                AllListings.Remove(item);
+
+                alertMessage = $"Listing #{item.Id} for '{item.Title}' has been permanently deleted from the marketplace.";
+                alertType = "success";
+            }
+            else
+            {
+                alertMessage = "Listing not found in the database.";
+                alertType = "warning";
+            }
+        }
+        catch (Exception ex)
+        {
+            alertMessage = $"Error deleting listing: {ex.Message}";
+            alertType = "danger";
+        }
+        StateHasChanged();
+    }
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "U";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0][0].ToString().ToUpper();
+        return (parts[0][0].ToString() + parts[parts.Length - 1][0].ToString()).ToUpper();
+    }
+
+    private string GetRelativeTime(DateTime date)
+    {
+        var span = DateTime.UtcNow - date;
+        if (span.TotalDays > 365) return $"{(int)(span.TotalDays / 365)} years ago";
+        if (span.TotalDays > 30) return $"{(int)(span.TotalDays / 30)} months ago";
+        if (span.TotalDays >= 7) return $"{(int)(span.TotalDays / 7)} weeks ago";
+        if (span.TotalDays >= 1) return $"{(int)span.TotalDays} day{(span.TotalDays >= 2 ? "s" : "")} ago";
+        if (span.TotalHours >= 1) return $"{(int)span.TotalHours} hour{(span.TotalHours >= 2 ? "s" : "")} ago";
+        if (span.TotalMinutes >= 1) return $"{(int)span.TotalMinutes} minute{(span.TotalMinutes >= 2 ? "s" : "")} ago";
+        return "Just now";
+    }
+
+    private void TriggerAction(string actionName)
+    {
+        alertMessage = $"Simulated: '{actionName}' triggered successfully.";
+        alertType = "info";
+    }
+
+    private void DismissAlert()
+    {
+        alertMessage = null;
+    }
+}
