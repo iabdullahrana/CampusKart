@@ -135,7 +135,8 @@
                             Active
                         </span>
                     </div>
-                    <a href="mailto:@listing.SellerEmail?subject=CampusKart Inquiry: @(Uri.EscapeDataString(listing.Title))" 
+                    <a href="https://mail.google.com/mail/?view=cm&fs=1&to=@listing.SellerEmail&su=@(Uri.EscapeDataString("CampusKart Inquiry: " + listing.Title))&body=@(Uri.EscapeDataString("Hi, I am interested in your item \"" + listing.Title + "\" listed on CampusKart. Is it still available?"))" 
+                       target="_blank"
                        class="btn btn-ck-primary w-100 py-3 d-flex align-items-center justify-content-center gap-2 text-decoration-none">
                         <span class="material-symbols-outlined fs-5">mail</span>
                         <span>Contact Seller</span>
